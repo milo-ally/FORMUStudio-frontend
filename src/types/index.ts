@@ -66,3 +66,27 @@ export interface Project {
   imageCount: number;
   createdAt: number;
 }
+
+/** Work metadata stored in SQLite. The image base64 may be populated at runtime. */
+export interface WorkMeta {
+  id: string;
+  status: "success";
+  revised_prompt?: string;
+  created_at: number;
+  b64_json?: string;
+}
+
+/** User override for a built-in preset. */
+export interface PresetOverride {
+  id: string;
+  title?: string;
+  prompt?: string;
+}
+
+/** Metadata for a user-created custom preset (image stored separately). */
+export interface CustomPresetMeta {
+  id: string;
+  title: string;
+  prompt: string;
+  ratio?: string;
+}

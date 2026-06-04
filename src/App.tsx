@@ -5,7 +5,11 @@ import { Gallery } from "./components/Gallery";
 import { DraftArea } from "./components/DraftArea";
 import { Lightbox } from "./components/Lightbox";
 import { Select } from "./components/Select";
+import { PresetEditor } from "./components/PresetEditor";
+import { Toast } from "./components/Toast";
 import { useImageGeneration } from "./hooks/useImageGeneration";
+import { useTheme } from "./hooks/useTheme";
+import { useToast } from "./hooks/useToast";
 import { fetchModels } from "./lib/api";
 import { base64ToFile } from "./lib/utils";
 import { fetchProjects, saveProject, removeProject, fetchWorks, saveWork, removeWork, fetchPresets, savePreset, removePreset, fetchSetting, saveSetting } from "./lib/dataApi";
@@ -13,48 +17,12 @@ import { maybeMigrate } from "./lib/migrateData";
 import { RATIO_DIMENSIONS } from "./types";
 import { getDefaultPresets, resolvePresets, DEFAULT_IDS } from "./data/presets";
 import type { Preset } from "./data/presets";
-import { PresetEditor } from "./components/PresetEditor";
-import { Toast } from "./components/Toast";
-import type { ToastMessage } from "./components/Toast";
-import type { ImageRatio, StoredImage, Project } from "./types";
+import type { ImageRatio, StoredImage, Project, WorkMeta, PresetOverride, CustomPresetMeta } from "./types";
 import "./App.css";
 
-interface WorkMeta {
-  id: string;
-  status: "success";
-  revised_prompt?: string;
-  created_at: number;
-  b64_json?: string;
-}
-
-interface PresetOverride {
-  id: string;
-  title?: string;
-  prompt?: string;
-}
-
-interface CustomPresetMeta {
-  id: string;
-  title: string;
-  prompt: string;
-  ratio?: string;
-}
-
 function App() {
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark" || stored === "light") return stored;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === "light" ? "dark" : "light"));
-  }, []);
+  const { theme, toggle: toggleTheme } = useTheme();
+  const toast = useToast();
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -86,17 +54,6 @@ function App() {
   const [presetImages, setPresetImages] = useState<Record<string, string>>({}); // id -> data URL or base64
   const [customPresets, setCustomPresets] = useState<CustomPresetMeta[]>([]);
   const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const toastId = useRef(0);
-
-  const pushToast = useCallback((text: string, type: "success" | "error") => {
-    const id = ++toastId.current;
-    setToasts((prev) => [...prev, { id, text, type }]);
-  }, []);
-
-  const dismissToast = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
 
   // Migrate legacy data then load from API on mount
   useEffect(() => {
@@ -450,12 +407,12 @@ function App() {
           }
         }
         setEditingPreset(null);
-        pushToast("风格已保存", "success");
+        toast.push("风格已保存", "success");
       } catch {
-        pushToast("保存失败，请重试", "error");
+        toast.push("保存失败，请重试", "error");
       }
     },
-    [customPresets, pushToast],
+    [customPresets, toast.push],
   );
 
   const handleCreatePreset = useCallback(
@@ -480,9 +437,9 @@ function App() {
           setPresetImages((prev) => ({ ...prev, [newId]: `data:image/png;base64,${updates.imageB64}` }));
         }
         setEditingPreset(null);
-        pushToast("风格已添加", "success");
+        toast.push("风格已添加", "success");
       } catch {
-        pushToast("添加失败，请重试", "error");
+        toast.push("添加失败，请重试", "error");
       }
     },
     [],
@@ -507,9 +464,9 @@ function App() {
           delete next[id];
           return next;
         });
-        pushToast("风格已删除", "success");
+        toast.push("风格已删除", "success");
       } catch {
-        pushToast("删除失败，请重试", "error");
+        toast.push("删除失败，请重试", "error");
       }
     },
     [],
@@ -529,9 +486,9 @@ function App() {
           delete next[id];
           return next;
         });
-        pushToast("已重置为默认", "success");
+        toast.push("已重置为默认", "success");
       } catch {
-        pushToast("重置失败，请重试", "error");
+        toast.push("重置失败，请重试", "error");
       }
     },
     [],
@@ -754,7 +711,7 @@ function App() {
         );
       })()}
 
-      <Toast messages={toasts} onDone={dismissToast} />
+      <Toast messages={toast.messages} onDone={toast.dismiss} />
     </div>
   );
 }

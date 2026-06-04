@@ -80,7 +80,12 @@ export function listProjects(): ProjectRow[] {
 
 export function insertProject(p: ProjectRow) {
   getDb().run(
-    "INSERT INTO projects (id, name, thumbnail_base64, image_count, created_at) VALUES (?, ?, ?, ?, ?)",
+    `INSERT INTO projects (id, name, thumbnail_base64, image_count, created_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       thumbnail_base64 = COALESCE(NULLIF(excluded.thumbnail_base64, ''), thumbnail_base64),
+       image_count = excluded.image_count`,
     [p.id, p.name, p.thumbnail_base64, p.image_count, p.created_at],
   );
 }
