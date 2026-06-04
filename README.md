@@ -47,6 +47,20 @@ VITE_AUTH_KEY=dummy
 | `VITE_API_BASE_URL` | chatgpt2api 后端地址 | `http://localhost:8000` |
 | `VITE_AUTH_KEY` | API 鉴权密钥 | `dummy` |
 
+## AI 生图服务接口
+
+前端依赖后端实现以下 5 个接口。接口详细定义见 `openapi.yaml`。自行开发生图服务器时按此规范实现即可接入。
+
+| 接口 | 用途 |
+|------|------|
+| `POST /api/image-tasks/generations` | 文生图（异步） |
+| `POST /api/image-tasks/edits` | 图生图（multipart，异步） |
+| `GET /api/image-tasks?ids=` | 批量轮询任务状态 |
+| `POST /api/image-tasks/{id}/resume-poll` | 超时续询 |
+| `GET /v1/models` | 模型列表 |
+
+轮询流程：提交任务 → 每 2 秒查状态 → 全部 `success`/`error` 后停止。
+
 ## 功能
 
 - 文生图 / 图生图
