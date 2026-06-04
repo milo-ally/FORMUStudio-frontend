@@ -3,9 +3,10 @@ import type { StoredImage } from "../types";
 interface ImageCardProps {
   image: StoredImage;
   onPreview: () => void;
+  onDelete?: () => void;
 }
 
-export function ImageCard({ image, onPreview }: ImageCardProps) {
+export function ImageCard({ image, onPreview, onDelete }: ImageCardProps) {
   if (image.status === "loading") {
     return (
       <div className="image-card loading">
@@ -37,6 +38,21 @@ export function ImageCard({ image, onPreview }: ImageCardProps) {
   return (
     <div className="image-card success" onClick={onPreview}>
       <img src={src} alt={image.revised_prompt || "AI Generated"} loading="lazy" />
+      {onDelete && (
+        <button
+          className="work-delete-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="删除"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
       <div className="image-overlay">
         <span className="overlay-btn">查看大图</span>
       </div>

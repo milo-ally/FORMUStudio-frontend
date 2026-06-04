@@ -104,11 +104,28 @@ export function useImageGeneration() {
     [addLoadingImages, updateImageFromTask],
   );
 
+  const cancelGeneration = useCallback(() => {
+    if (pollingRef.current) {
+      clearTimeout(pollingRef.current);
+      pollingRef.current = null;
+    }
+    setImages((prev) => prev.filter((img) => img.status !== "loading"));
+    setGenerating(false);
+  }, []);
+
+  const addImage = useCallback((image: StoredImage) => {
+    setImages((prev) => [...prev, image]);
+  }, []);
+
+  const removeImage = useCallback((id: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  }, []);
+
   const clearImages = useCallback(() => {
     if (pollingRef.current) clearTimeout(pollingRef.current);
     setImages([]);
     setGenerating(false);
   }, []);
 
-  return { images, generating, startGeneration, clearImages };
+  return { images, generating, startGeneration, cancelGeneration, addImage, removeImage, clearImages };
 }

@@ -1,37 +1,43 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { PromptInput } from "./components/PromptInput";
 import { ProjectSidebar } from "./components/ProjectSidebar";
-import { ImageGallery } from "./components/ImageGallery";
+import { Gallery } from "./components/Gallery";
+import { DraftArea } from "./components/DraftArea";
 import { Lightbox } from "./components/Lightbox";
 import { Select } from "./components/Select";
 import { useImageGeneration } from "./hooks/useImageGeneration";
 import { fetchModels } from "./lib/api";
+import { base64ToFile } from "./lib/utils";
+import { fetchProjects, saveProject, removeProject, fetchWorks, saveWork, removeWork, fetchPresets, savePreset, removePreset, fetchSetting, saveSetting } from "./lib/dataApi";
+import { maybeMigrate } from "./lib/migrateData";
 import { RATIO_DIMENSIONS } from "./types";
+import { getDefaultPresets, resolvePresets, DEFAULT_IDS } from "./data/presets";
+import type { Preset } from "./data/presets";
+import { PresetEditor } from "./components/PresetEditor";
+import { Toast } from "./components/Toast";
+import type { ToastMessage } from "./components/Toast";
 import type { ImageRatio, StoredImage, Project } from "./types";
 import "./App.css";
 
-function loadProjects(): Project[] {
-  try {
-    const raw = localStorage.getItem("formu_projects");
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return [{ id: "default", name: "默认项目", thumbnail: "", imageCount: 0, createdAt: Date.now() }];
+interface WorkMeta {
+  id: string;
+  status: "success";
+  revised_prompt?: string;
+  created_at: number;
+  b64_json?: string;
 }
 
-function saveProjects(projects: Project[]) {
-  localStorage.setItem("formu_projects", JSON.stringify(projects));
+interface PresetOverride {
+  id: string;
+  title?: string;
+  prompt?: string;
 }
 
-function loadProjectImages(): Record<string, StoredImage[]> {
-  try {
-    const raw = localStorage.getItem("formu_project_images");
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {};
-}
-
-function saveProjectImages(images: Record<string, StoredImage[]>) {
-  localStorage.setItem("formu_project_images", JSON.stringify(images));
+interface CustomPresetMeta {
+  id: string;
+  title: string;
+  prompt: string;
+  ratio?: string;
 }
 
 function App() {
@@ -55,6 +61,7 @@ function App() {
 
   // Generation settings
   const [prompt, setPrompt] = useState("");
+  const [lastPrompt, setLastPrompt] = useState("");
   const [mode, setMode] = useState<"generate" | "edit">("generate");
   const [model, setModel] = useState("gpt-image-2");
   const [models, setModels] = useState(["gpt-image-2"]);
@@ -62,61 +69,155 @@ function App() {
   const [quality, setQuality] = useState("auto");
   const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
 
+  // Data loading state
+  const [dataLoaded, setDataLoaded] = useState(false);
+
   // Projects
-  const [projects, setProjects] = useState<Project[]>(loadProjects);
-  const [activeProject, setActiveProject] = useState(() => {
-    const stored = localStorage.getItem("formu_active_project");
-    return stored || "default";
-  });
-  const [projectImages, setProjectImages] = useState<Record<string, StoredImage[]>>(loadProjectImages);
+  const [projects, setProjects] = useState<Project[]>(() => [
+    { id: "default", name: "默认项目", thumbnail: "", imageCount: 0, createdAt: Date.now() },
+  ]);
+  const [activeProject, setActiveProject] = useState("default");
 
-  // Persist projects
-  useEffect(() => { saveProjects(projects); }, [projects]);
-  useEffect(() => { saveProjectImages(projectImages); }, [projectImages]);
+  // Works — metadata + b64_json from API
+  const [works, setWorks] = useState<Record<string, WorkMeta[]>>({});
+
+  // Presets
+  const [presetOverrides, setPresetOverrides] = useState<Record<string, PresetOverride>>({});
+  const [presetImages, setPresetImages] = useState<Record<string, string>>({}); // id -> data URL or base64
+  const [customPresets, setCustomPresets] = useState<CustomPresetMeta[]>([]);
+  const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const toastId = useRef(0);
+
+  const pushToast = useCallback((text: string, type: "success" | "error") => {
+    const id = ++toastId.current;
+    setToasts((prev) => [...prev, { id, text, type }]);
+  }, []);
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // Migrate legacy data then load from API on mount
   useEffect(() => {
-    localStorage.setItem("formu_active_project", activeProject);
-  }, [activeProject]);
+    let cancelled = false;
+    async function loadAll() {
+      try {
+        await maybeMigrate();
+      } catch {}
+      try {
+        const savedActive = await fetchSetting("active_project");
+        if (savedActive && !cancelled) setActiveProject(savedActive);
+      } catch {}
+      try {
+        const [serverProjects, serverWorks, serverPresets] = await Promise.all([
+          fetchProjects(),
+          (async () => {
+            // Fetch works for all projects we know about
+            const allWorks: Record<string, WorkMeta[]> = {};
+            const projects = await fetchProjects();
+            for (const p of projects) {
+              const w = await fetchWorks(p.id);
+              allWorks[p.id] = w;
+            }
+            return allWorks;
+          })(),
+          fetchPresets(),
+        ]);
 
-  // Current project's images
-  const currentImages = projectImages[activeProject] || [];
+        if (cancelled) return;
 
-  // Sync images back to project
-  const syncImages = useCallback((imgs: StoredImage[]) => {
-    setProjectImages((prev) => ({ ...prev, [activeProject]: imgs }));
-  }, [activeProject]);
+        if (serverProjects.length > 0) {
+          setProjects(serverProjects);
+        }
+
+        if (Object.keys(serverWorks).length > 0) {
+          setWorks(serverWorks);
+        }
+
+        // Parse presets
+        const overrides: Record<string, PresetOverride> = {};
+        const images: Record<string, string> = {};
+        const customs: CustomPresetMeta[] = [];
+
+        for (const o of serverPresets.overrides) {
+          overrides[o.id] = { id: o.id, title: o.title, prompt: o.prompt };
+          if (o.image_base64) {
+            images[o.id] = `data:image/png;base64,${o.image_base64}`;
+          }
+        }
+        for (const c of serverPresets.customs) {
+          customs.push({
+            id: c.id,
+            title: c.title,
+            prompt: c.prompt,
+            ratio: c.ratio,
+          });
+          if (c.image_base64) {
+            images[c.id] = `data:image/png;base64,${c.image_base64}`;
+          }
+        }
+
+        setPresetOverrides(overrides);
+        setPresetImages(images);
+        setCustomPresets(customs);
+      } catch (err) {
+        console.error("Failed to load data from API:", err);
+      }
+      if (!cancelled) setDataLoaded(true);
+    }
+    loadAll();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Resolved presets
+  const resolvedPresets = resolvePresets(presetOverrides, presetImages, customPresets, presetImages);
+
+  // Update project thumbnails + imageCount from works
+  useEffect(() => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        const ws = works[p.id] || [];
+        const last = [...ws].reverse()[0];
+        const thumb = last?.b64_json ? `data:image/png;base64,${last.b64_json}` : "";
+        return {
+          ...p,
+          thumbnail: thumb,
+          imageCount: ws.length,
+        };
+      }),
+    );
+  }, [works]);
+
+  // Persist active project to server
+  useEffect(() => {
+    if (!dataLoaded) return;
+    saveSetting("active_project", activeProject).catch(() => {});
+  }, [activeProject, dataLoaded]);
+
+  // Persist project list changes to API
+  const prevProjectsRef = useRef(projects);
+  useEffect(() => {
+    if (!dataLoaded) return;
+    // Only save if something actually changed
+    for (const p of projects) {
+      saveProject({
+        id: p.id,
+        name: p.name,
+        image_count: p.imageCount,
+        created_at: p.createdAt,
+      }).catch(() => {});
+    }
+    prevProjectsRef.current = projects;
+  }, [projects, dataLoaded]);
 
   // Lightbox
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  const { images, generating, startGeneration, clearImages } = useImageGeneration();
+  const [promotedIds, setPromotedIds] = useState<Set<string>>(new Set());
 
-  // Sync hook images → project images
-  const prevImagesRef = useRef<StoredImage[]>([]);
-  useEffect(() => {
-    if (images !== prevImagesRef.current) {
-      prevImagesRef.current = images;
-      syncImages(images);
-    }
-  }, [images, syncImages]);
-
-  // Update project thumbnail + imageCount when images change
-  useEffect(() => {
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id !== activeProject) return p;
-        const imgs = projectImages[activeProject] || [];
-        const lastSuccess = [...imgs].reverse().find((i) => i.status === "success");
-        return {
-          ...p,
-          thumbnail: lastSuccess?.b64_json
-            ? `data:image/png;base64,${lastSuccess.b64_json}`
-            : lastSuccess?.url || p.thumbnail,
-          imageCount: imgs.filter((i) => i.status === "success").length,
-        };
-      }),
-    );
-  }, [projectImages, activeProject]);
+  const { images, generating, startGeneration, cancelGeneration, addImage, removeImage } = useImageGeneration();
 
   // Load models
   useEffect(() => {
@@ -140,17 +241,19 @@ function App() {
     const newProject: Project = { id, name, thumbnail: "", imageCount: 0, createdAt: Date.now() };
     setProjects((prev) => [...prev, newProject]);
     setActiveProject(id);
+    saveProject({ id, name, image_count: 0, created_at: newProject.createdAt }).catch(() => {});
   }, [projects]);
 
   const handleDeleteProject = useCallback(
     (id: string) => {
       if (projects.length <= 1) return;
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-      setProjectImages((prev) => {
+      removeProject(id).catch(() => {});
+      setWorks((prev) => {
         const next = { ...prev };
         delete next[id];
         return next;
       });
+      setProjects((prev) => prev.filter((p) => p.id !== id));
       if (activeProject === id) {
         const remaining = projects.filter((p) => p.id !== id);
         setActiveProject(remaining[0]?.id || "default");
@@ -170,10 +273,13 @@ function App() {
     setActiveProject(id);
   }, []);
 
-  const handleSubmit = useCallback(() => {
-    if (!prompt.trim()) return;
+  const handleSubmit = useCallback((text?: string) => {
+    const p = (text ?? prompt).trim();
+    if (!p) return;
     const { width, height } = RATIO_DIMENSIONS[ratio];
-    startGeneration(prompt, mode, {
+    setLastPrompt(p);
+    setPromotedIds(new Set());
+    startGeneration(p, mode, {
       count: 1,
       model,
       size: `${width}x${height}`,
@@ -183,19 +289,270 @@ function App() {
     setPrompt("");
   }, [prompt, mode, model, ratio, quality, referenceFiles, startGeneration]);
 
-  const handleClearImages = useCallback(() => {
-    clearImages();
-    setProjectImages((prev) => ({ ...prev, [activeProject]: [] }));
-  }, [clearImages, activeProject]);
+  // Promote from generation panel → works
+  const handlePromoteToWorks = useCallback(
+    async (id: string) => {
+      const item = images.find((img) => img.id === id);
+      if (!item || item.status !== "success" || !item.b64_json) return;
+      setPromotedIds((prev) => new Set(prev).add(id));
 
-  const handlePreviewImage = useCallback(
+      try {
+        await saveWork({
+          id,
+          project_id: activeProject,
+          image_base64: item.b64_json,
+          revised_prompt: item.revised_prompt,
+          created_at: Date.now(),
+        });
+      } catch (err) {
+        console.error("Failed to save work:", err);
+        setPromotedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        return;
+      }
+
+      const meta: WorkMeta = {
+        id,
+        status: "success",
+        revised_prompt: item.revised_prompt,
+        created_at: Date.now(),
+        b64_json: item.b64_json,
+      };
+      setWorks((w) => ({
+        ...w,
+        [activeProject]: [...(w[activeProject] || []), meta],
+      }));
+    },
+    [activeProject, images],
+  );
+
+  const handleDiscardDraft = useCallback(
+    (id: string) => {
+      removeImage(id);
+    },
+    [removeImage],
+  );
+
+  const handleImportFiles = useCallback(
+    (files: File[]) => {
+      for (const file of files) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          const b64 = dataUrl.split(",")[1] || "";
+          const draft: StoredImage = {
+            id: crypto.randomUUID(),
+            status: "success",
+            b64_json: b64,
+            revised_prompt: file.name,
+          };
+          addImage(draft);
+        };
+        reader.readAsDataURL(file);
+      }
+    },
+    [addImage],
+  );
+
+  const handleUseAsReference = useCallback(
+    (img: StoredImage) => {
+      if (img.b64_json) {
+        const file = base64ToFile(img.b64_json, "reference.png");
+        setReferenceFiles((prev) => [...prev, file].slice(0, 5));
+        setMode("edit");
+        return;
+      }
+      // Works from API have b64_json populated, so this fallback rarely needed
+    },
+    [],
+  );
+
+  const handleDeleteWork = useCallback(
+    async (id: string) => {
+      removeWork(id).catch(() => {});
+      setWorks((prev) => ({
+        ...prev,
+        [activeProject]: (prev[activeProject] || []).filter((w) => w.id !== id),
+      }));
+    },
+    [activeProject],
+  );
+
+  const handleCancelGeneration = useCallback(() => {
+    cancelGeneration();
+    setPromotedIds(new Set());
+  }, [cancelGeneration]);
+
+  const handlePresetSelect = useCallback(
+    (preset: Preset) => {
+      setPrompt(preset.prompt);
+    },
+    [],
+  );
+
+  const handleEditPreset = useCallback((preset: Preset) => {
+    setEditingPreset(preset);
+  }, []);
+
+  const handleSavePreset = useCallback(
+    async (id: string, updates: { title?: string; prompt?: string; imageB64?: string }) => {
+      try {
+        const isBuiltin = DEFAULT_IDS.has(id);
+        if (isBuiltin) {
+          const defaults = getDefaultPresets().find((p) => p.id === id)!;
+          const title = updates.title && updates.title !== defaults.title ? updates.title : undefined;
+          const prompt = updates.prompt && updates.prompt !== defaults.prompt ? updates.prompt : undefined;
+          await savePreset({
+            id,
+            title: updates.title || defaults.title,
+            prompt: updates.prompt || defaults.prompt,
+            image_base64: updates.imageB64,
+            ratio: defaults.ratio,
+            is_custom: 0,
+          });
+          setPresetOverrides((prev) => {
+            const next = { ...prev };
+            const ov: PresetOverride = { id };
+            if (title) ov.title = title;
+            if (prompt) ov.prompt = prompt;
+            next[id] = ov;
+            return next;
+          });
+          if (updates.imageB64) {
+            setPresetImages((prev) => ({ ...prev, [id]: `data:image/png;base64,${updates.imageB64}` }));
+          }
+        } else {
+          const existing = customPresets.find((c) => c.id === id);
+          await savePreset({
+            id,
+            title: updates.title || existing?.title || "",
+            prompt: updates.prompt || existing?.prompt || "",
+            image_base64: updates.imageB64,
+            ratio: existing?.ratio || "1:1",
+            is_custom: 1,
+          });
+          setCustomPresets((prev) =>
+            prev.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    title: updates.title || c.title,
+                    prompt: updates.prompt || c.prompt,
+                  }
+                : c,
+            ),
+          );
+          if (updates.imageB64) {
+            setPresetImages((prev) => ({ ...prev, [id]: `data:image/png;base64,${updates.imageB64}` }));
+          }
+        }
+        setEditingPreset(null);
+        pushToast("风格已保存", "success");
+      } catch {
+        pushToast("保存失败，请重试", "error");
+      }
+    },
+    [customPresets, pushToast],
+  );
+
+  const handleCreatePreset = useCallback(
+    async (_id: string, updates: { title?: string; prompt?: string; imageB64?: string }) => {
+      if (!updates.title || !updates.prompt) return;
+      try {
+        const newId = crypto.randomUUID();
+        await savePreset({
+          id: newId,
+          title: updates.title,
+          prompt: updates.prompt,
+          image_base64: updates.imageB64,
+          ratio: "1:1",
+          is_custom: 1,
+          created_at: Date.now(),
+        });
+        setCustomPresets((prev) => [
+          ...prev,
+          { id: newId, title: updates.title!, prompt: updates.prompt! },
+        ]);
+        if (updates.imageB64) {
+          setPresetImages((prev) => ({ ...prev, [newId]: `data:image/png;base64,${updates.imageB64}` }));
+        }
+        setEditingPreset(null);
+        pushToast("风格已添加", "success");
+      } catch {
+        pushToast("添加失败，请重试", "error");
+      }
+    },
+    [],
+  );
+
+  const handleAddPreset = useCallback(() => {
+    setEditingPreset({
+      id: "",
+      title: "",
+      image: "",
+      prompt: "",
+    });
+  }, []);
+
+  const handleDeleteCustomPreset = useCallback(
+    async (id: string) => {
+      try {
+        await removePreset(id);
+        setCustomPresets((prev) => prev.filter((c) => c.id !== id));
+        setPresetImages((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        pushToast("风格已删除", "success");
+      } catch {
+        pushToast("删除失败，请重试", "error");
+      }
+    },
+    [],
+  );
+
+  const handleResetPreset = useCallback(
+    async (id: string) => {
+      try {
+        await removePreset(id);
+        setPresetOverrides((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        setPresetImages((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        pushToast("已重置为默认", "success");
+      } catch {
+        pushToast("重置失败，请重试", "error");
+      }
+    },
+    [],
+  );
+
+  // Works for rendering
+  const currentWorks = works[activeProject] || [];
+  const successWorks = currentWorks.map((w) => ({
+    id: w.id,
+    status: "success" as const,
+    revised_prompt: w.revised_prompt,
+    url: w.b64_json ? `data:image/png;base64,${w.b64_json}` : "",
+    b64_json: w.b64_json,
+  }));
+
+  const handlePreviewWork = useCallback(
     (index: number) => {
-      const successImages = currentImages.filter((i: StoredImage) => i.status === "success");
-      const globalIndex = currentImages.indexOf(successImages[index]);
-      setLightboxIndex(globalIndex >= 0 ? globalIndex : index);
+      setLightboxIndex(index);
       setLightboxOpen(true);
     },
-    [currentImages],
+    [],
   );
 
   return (
@@ -231,9 +588,6 @@ function App() {
               </svg>
             )}
           </button>
-          <button className="clear-btn" onClick={handleClearImages} disabled={currentImages.length === 0}>
-            清空
-          </button>
         </div>
       </header>
 
@@ -260,7 +614,8 @@ function App() {
                   value={prompt}
                   onChange={setPrompt}
                   onSubmit={handleSubmit}
-                  disabled={generating}
+                  generating={generating}
+                  onCancel={cancelGeneration}
                 />
 
                 <div className="prompt-settings">
@@ -345,23 +700,61 @@ function App() {
             </div>
           </section>
 
+          {/* ===== Draft Area ===== */}
+          <DraftArea
+            images={images}
+            generating={generating}
+            prompt={lastPrompt}
+            promotedIds={promotedIds}
+            onCancel={handleCancelGeneration}
+            onPromote={handlePromoteToWorks}
+            onDiscard={handleDiscardDraft}
+            onImport={handleImportFiles}
+            onUseAsReference={handleUseAsReference}
+          />
+
+          {/* ===== Gallery ===== */}
           <section className="gallery-section">
-            <ImageGallery
-              images={currentImages}
-              generating={generating}
-              onPreviewImage={handlePreviewImage}
+            <Gallery
+              presets={resolvedPresets}
+              works={successWorks}
+              onSelectPreset={handlePresetSelect}
+              onEditPreset={handleEditPreset}
+              onAddPreset={handleAddPreset}
+              onPreviewWork={handlePreviewWork}
+              onDeleteWork={handleDeleteWork}
             />
           </section>
         </div>
       </div>
 
       <Lightbox
-        images={currentImages}
+        images={successWorks}
         index={lightboxIndex}
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
         onIndexChange={setLightboxIndex}
       />
+
+      {editingPreset && (() => {
+        const isCreate = editingPreset.id === "";
+        const defaultMatch = getDefaultPresets().find((p) => p.id === editingPreset.id);
+        const defaultPreset = defaultMatch || { id: "", title: "", image: "", prompt: "" };
+        return (
+          <PresetEditor
+            preset={editingPreset}
+            defaultPreset={defaultPreset}
+            mode={isCreate ? "create" : "edit"}
+            open={true}
+            onClose={() => setEditingPreset(null)}
+            onSave={isCreate ? handleCreatePreset : handleSavePreset}
+            onReset={handleResetPreset}
+            onDelete={(!isCreate && !DEFAULT_IDS.has(editingPreset.id)) ? handleDeleteCustomPreset : undefined}
+          />
+        );
+      })()}
+
+      <Toast messages={toasts} onDone={dismissToast} />
     </div>
   );
 }

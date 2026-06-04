@@ -5,6 +5,12 @@ node_modules/
 dist/
 dist-ssr/
 
+# Data (SQLite database)
+data/
+
+# Claude Code
+.claude/
+
 # Environment
 .env
 .env.local
