@@ -1,0 +1,353 @@
+openapi: "3.0.3"
+info:
+  title: FORMU Studio AI Image Service
+  description: |
+    FORMU Studio 前端依赖的 AI 图像生成后端服务接口。
+
+    如果你要自行开发生图服务器，实现以下接口即可接入。
+
+    认证方式：所有接口通过 `Authorization: Bearer <key>` 头部鉴权（配置项）。
+    不传合法密钥返回 `403 Forbidden`。
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8000
+    description: 默认本地服务
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ── 文生图 ─────────────────────────────────────────────
+
+  /api/image-tasks/generations:
+    post:
+      summary: 创建文生图任务
+      description: |
+        提交异步文生图请求，立即返回任务对象（状态 `queued`），
+        前端通过 `/api/image-tasks` 轮询获取最终结果。
+      operationId: createGeneration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_task_id, prompt]
+              properties:
+                client_task_id:
+                  type: string
+                  description: 客户端生成的唯一任务 ID（UUID）
+                  example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                prompt:
+                  type: string
+                  minLength: 1
+                  description: 图像生成提示词
+                  example: "一只坐在沙发上的橘猫，温馨室内灯光，电影级画质"
+                model:
+                  type: string
+                  default: "gpt-image-2"
+                size:
+                  type: string
+                  nullable: true
+                  description: 图像尺寸，格式为 `{width}x{height}`
+                  example: "1024x1024"
+                quality:
+                  type: string
+                  default: "auto"
+                  enum: [auto, high, standard]
+      responses:
+        "200":
+          description: 任务已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageTask"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── 图生图 ─────────────────────────────────────────────
+
+  /api/image-tasks/edits:
+    post:
+      summary: 创建图生图任务
+      description: |
+        提交异步图生图请求（带参考图）。请求体为 `multipart/form-data`，
+        图片字段名 `image`，可传多张。
+      operationId: createEdit
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [client_task_id, prompt]
+              properties:
+                client_task_id:
+                  type: string
+                  description: 客户端生成的唯一任务 ID（UUID）
+                prompt:
+                  type: string
+                  minLength: 1
+                model:
+                  type: string
+                  default: "gpt-image-2"
+                size:
+                  type: string
+                  nullable: true
+                  example: "1024x1024"
+                quality:
+                  type: string
+                  default: "auto"
+                  enum: [auto, high, standard]
+                image:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: 参考图片（可多张）
+      responses:
+        "200":
+          description: 任务已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageTask"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── 查询任务状态 ───────────────────────────────────────
+
+  /api/image-tasks:
+    get:
+      summary: 批量查询任务状态
+      description: |
+        前端每 2 秒轮询一次。传入逗号分隔的任务 ID 列表。
+        返回已找到的任务，以及服务端不存在的 ID 列表。
+      operationId: listImageTasks
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 逗号分隔的任务 ID 列表
+          example: "a1b2c3d4-...,e5f6a7b8-..."
+      responses:
+        "200":
+          description: 任务列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageTaskListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── 超时续询 ───────────────────────────────────────────
+
+  /api/image-tasks/{task_id}/resume-poll:
+    post:
+      summary: 续询超时任务
+      description: |
+        当任务轮询超时（长时间未完成）后，调用此接口延长等待。
+        服务端会额外等待 `extra_timeout_secs` 秒再返回该任务的最新状态。
+      operationId: resumePoll
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 任务 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extra_timeout_secs:
+                  type: number
+                  default: 30
+                  minimum: 5
+                  maximum: 120
+      responses:
+        "200":
+          description: 任务最新状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageTask"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── 模型列表 ───────────────────────────────────────────
+
+  /v1/models:
+    get:
+      summary: 获取可用模型列表
+      description: |
+        返回 OpenAI 兼容格式的模型列表。前端只取 ID 包含 `image` 或 `dall` 的模型。
+      operationId: listModels
+      responses:
+        "200":
+          description: 模型列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "gpt-image-2"
+                  object:
+                    type: string
+                    example: "list"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+# ── Schemas ─────────────────────────────────────────────────
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: 请求头 `Authorization: Bearer <auth_key>`
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    Forbidden:
+      description: 鉴权失败
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+                example: "Not authenticated"
+
+  schemas:
+    ImageTask:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 任务 ID（与创建时的 client_task_id 一致）
+        status:
+          type: string
+          enum: [queued, running, success, error]
+          description: |
+            任务状态：
+            - `queued` — 排队中
+            - `running` — 正在生成
+            - `success` — 生成成功，`data` 字段有结果
+            - `error` — 生成失败，`error` 字段有错误信息
+        mode:
+          type: string
+          enum: [generate, edit]
+        model:
+          type: string
+        size:
+          type: string
+          nullable: true
+        quality:
+          type: string
+        created_at:
+          type: string
+          description: 任务创建时间（ISO 8601）
+        updated_at:
+          type: string
+          description: 最后更新时间（ISO 8601）
+        progress:
+          type: string
+          nullable: true
+          description: 进度提示文字
+        elapsed_secs:
+          type: number
+          nullable: true
+          description: 已耗时（秒）
+        duration_ms:
+          type: number
+          nullable: true
+          description: 生成总耗时（毫秒），仅成功时有值
+        data:
+          type: array
+          nullable: true
+          description: 生成结果（仅 status=success 时有效）
+          items:
+            $ref: "#/components/schemas/ImageData"
+        error:
+          type: string
+          nullable: true
+          description: 错误信息（仅 status=error 时有效）
+        usage:
+          type: object
+          nullable: true
+
+    ImageData:
+      type: object
+      description: 单张生成图像的元数据
+      properties:
+        b64_json:
+          type: string
+          nullable: true
+          description: 图像的 base64 编码（PNG），前端直接用 `data:image/png;base64,...` 渲染
+        url:
+          type: string
+          nullable: true
+          description: 图像的可访问 URL（通常为本地文件链接）
+        revised_prompt:
+          type: string
+          nullable: true
+          description: 模型改写后的提示词
+
+    ImageTaskListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageTask"
+        missing_ids:
+          type: array
+          items:
+            type: string
+          description: 服务端不存在的任务 ID（可能从未创建或已过期）
+
+# ── 集成指南 ────────────────────────────────────────────────
+
+x-integration-guide:
+  轮询流程: |
+    1. 前端 POST /api/image-tasks/generations 或 /api/image-tasks/edits，获得任务 ID
+    2. 前端每 2 秒 GET /api/image-tasks?ids=id1,id2,... 查询状态
+    3. 当所有任务 status 为 success 或 error 时停止轮询
+    4. 若长时间未完成（超时），调用 POST /api/image-tasks/{id}/resume-poll 续询
+
+  认证: |
+    所有接口通过 HTTP 头 `Authorization: Bearer <key>` 认证。
+    前端通过环境变量 `VITE_AUTH_KEY` 配置密钥，默认值为 `dummy`。
+
+  最低实现: |
+    只需实现 5 个接口，返回符合 Schema 的 JSON 即可接入。
+    图片建议返回 base64（`b64_json` 字段），避免前端处理跨域和 URL 过期问题。
