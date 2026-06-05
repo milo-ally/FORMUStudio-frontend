@@ -51,50 +51,54 @@ VITE_AUTH_KEY=dummy
 
 ## API 接口
 
-全部接口定义见 `openapi.yaml`。后端 chatgpt2api 运行在 `:8000`，数据服务运行在 `:3001`。
+全部接口的请求/响应 Schema 见 `openapi.yaml`。后端 chatgpt2api 运行在 `:8000`，数据服务运行在 `:3001`。
 
 ### AI 生成服务（:8000）
 
+> 后端代码均在 `backend/chatgpt2api/` 目录下。所有路由通过 `api/app.py:45-49` 注册。
+
 #### 图像生成
 
-| 方法 | 接口 | 用途 |
-|------|------|------|
-| `POST` | `/api/image-tasks/generations` | 文生图（异步） |
-| `POST` | `/api/image-tasks/edits` | 图生图（multipart，异步） |
-| `GET` | `/api/image-tasks?ids=` | 批量轮询任务状态 |
-| `POST` | `/api/image-tasks/{id}/resume-poll` | 超时续询 |
-| `GET` | `/v1/models` | 图像模型列表 |
+| 方法 | 接口 | 用途 | 后端定义位置 |
+|------|------|------|-------------|
+| `POST` | `/api/image-tasks/generations` | 文生图（异步） | `api/image_tasks.py:49` |
+| `POST` | `/api/image-tasks/edits` | 图生图（multipart，异步） | `api/image_tasks.py:71` |
+| `GET` | `/api/image-tasks?ids=` | 批量轮询任务状态 | `api/image_tasks.py:41` |
+| `POST` | `/api/image-tasks/{id}/resume-poll` | 超时续询 | `api/image_tasks.py:100` |
+| `GET` | `/v1/models` | 图像模型列表 | `api/ai.py:294`，业务逻辑在 `services/protocol/openai_v1_models.py` |
 
 轮询流程：提交任务 → 每 2 秒查状态 → 全部 `success`/`error` 后停止。
 
 #### 3D 模型生成
 
-| 方法 | 接口 | 用途 |
-|------|------|------|
-| `GET` | `/api/3d/models` | 3D 模型列表 |
-| `POST` | `/api/3d/submit` | 提交 3D 生成任务（文生3D / 图生3D） |
-| `POST` | `/api/3d/query` | 查询任务状态与结果 |
-| `POST` | `/api/3d/convert` | 格式转换（STL / USDZ / MP4 / GIF） |
+| 方法 | 接口 | 用途 | 后端定义位置 |
+|------|------|------|-------------|
+| `GET` | `/api/3d/models` | 3D 模型列表 | `api/ai.py:428` |
+| `POST` | `/api/3d/submit` | 提交 3D 生成任务（文生3D / 图生3D） | `api/ai.py:443` |
+| `POST` | `/api/3d/query` | 查询任务状态与结果 | `api/ai.py:458` |
+| `POST` | `/api/3d/convert` | 格式转换（STL / USDZ / MP4 / GIF） | `api/ai.py:480`，TC3 签名在 `api/ai.py:50` |
 
 3D 轮询流程：提交任务 → 获取 `job_id` → 每 3 秒查询状态 → `DONE` 或 `FAIL` 后停止。支持并发生成多个任务。
 
 ### 数据服务（:3001）
 
-| 方法 | 接口 | 用途 |
-|------|------|------|
-| `GET` | `/api/data/projects` | 列出项目 |
-| `POST` | `/api/data/projects` | 创建 / 更新项目 |
-| `DELETE` | `/api/data/projects/{id}` | 删除项目 |
-| `GET` | `/api/data/works?project_id=` | 按项目列出作品 |
-| `POST` | `/api/data/works` | 保存作品 |
-| `DELETE` | `/api/data/works/{id}` | 删除作品 |
-| `GET` | `/api/data/presets` | 列出预设 |
-| `PUT` | `/api/data/presets/{id}` | 创建 / 更新预设 |
-| `DELETE` | `/api/data/presets/{id}` | 删除预设 |
-| `GET` | `/api/data/prompt-history?category=` | 按类别列出提示词历史 |
-| `POST` | `/api/data/prompt-history` | 记录提示词 |
-| `GET` | `/api/data/settings/{key}` | 读取设置 |
-| `PUT` | `/api/data/settings/{key}` | 写入设置 |
+> 全部接口在单个文件 `frontend/FORMUStudio/server/index.ts` 中，数据库操作在 `server/db.ts`。
+
+| 方法 | 接口 | 用途 | `server/index.ts` 行号 |
+|------|------|------|-----------------------|
+| `GET` | `/api/data/projects` | 列出项目 | 70 |
+| `POST` | `/api/data/projects` | 创建 / 更新项目 | 84 |
+| `DELETE` | `/api/data/projects/{id}` | 删除项目 | 97 |
+| `GET` | `/api/data/works?project_id=` | 按项目列出作品 | 104 |
+| `POST` | `/api/data/works` | 保存作品 | 117 |
+| `DELETE` | `/api/data/works/{id}` | 删除作品 | 130 |
+| `GET` | `/api/data/presets` | 列出预设 | 137 |
+| `PUT` | `/api/data/presets/{id}` | 创建 / 更新预设 | 158 |
+| `DELETE` | `/api/data/presets/{id}` | 删除预设 | 181 |
+| `GET` | `/api/data/prompt-history?category=` | 按类别列出提示词历史 | 188 |
+| `POST` | `/api/data/prompt-history` | 记录提示词 | 193 |
+| `GET` | `/api/data/settings/{key}` | 读取设置 | 202 |
+| `PUT` | `/api/data/settings/{key}` | 写入设置 | 207 |
 
 提示词历史按 `category` 区分：图像生成使用 `image`，3D 生成使用 `3d`，互不干扰。
 
