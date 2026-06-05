@@ -9,9 +9,12 @@ interface PromptInputProps {
   onSubmit: (text?: string) => void;
   generating?: boolean;
   onCancel?: () => void;
+  allowEmptySubmit?: boolean;
+  category?: string;
+  placeholder?: string;
 }
 
-export function PromptInput({ value, onChange, onSubmit, generating, onCancel }: PromptInputProps) {
+export function PromptInput({ value, onChange, onSubmit, generating, onCancel, allowEmptySubmit, category = "image", placeholder = "描述你想要的图像 ..." }: PromptInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -19,13 +22,13 @@ export function PromptInput({ value, onChange, onSubmit, generating, onCancel }:
   const [history, setHistory] = useState<PromptEntry[]>([]);
 
   useEffect(() => {
-    fetchPromptHistory().then(setHistory).catch(() => {});
-  }, []);
+    fetchPromptHistory(category).then(setHistory).catch(() => {});
+  }, [category]);
 
   const recordPrompt = useCallback((text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    addPromptEntry(trimmed).catch(() => {});
+    addPromptEntry(trimmed, category).catch(() => {});
     setHistory((prev) => {
       const idx = prev.findIndex((e) => e.prompt === trimmed);
       if (idx >= 0) {
@@ -35,7 +38,7 @@ export function PromptInput({ value, onChange, onSubmit, generating, onCancel }:
       }
       return [...prev, { prompt: trimmed, count: 1, last_used: Date.now() }];
     });
-  }, []);
+  }, [category]);
 
   const suggestions = value.trim()
     ? history.filter((e) => e.prompt.includes(value.trim()) && e.prompt !== value.trim()).slice(0, 5)
@@ -69,11 +72,12 @@ export function PromptInput({ value, onChange, onSubmit, generating, onCancel }:
   );
 
   const handleSubmit = useCallback(() => {
-    if (generating || !value.trim()) return;
+    if (generating) return;
+    if (!allowEmptySubmit && !value.trim()) return;
     recordPrompt(value.trim());
     setFocused(false);
     onSubmit(value.trim());
-  }, [generating, value, onSubmit]);
+  }, [generating, value, onSubmit, allowEmptySubmit]);
 
   const handleChange = useCallback(
     (v: string) => {
@@ -103,8 +107,8 @@ export function PromptInput({ value, onChange, onSubmit, generating, onCancel }:
         e.preventDefault();
         if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
           selectSuggestion(suggestions[selectedIndex].prompt);
-        } else if (value.trim() && !generating) {
-          recordPrompt(value.trim());
+        } else if ((value.trim() || allowEmptySubmit) && !generating) {
+          if (value.trim()) recordPrompt(value.trim());
           setFocused(false);
           onSubmit(value.trim());
         }
@@ -116,7 +120,7 @@ export function PromptInput({ value, onChange, onSubmit, generating, onCancel }:
         setFocused(false);
       }
     },
-    [suggestions, selectedIndex, value, generating, selectSuggestion, onSubmit],
+    [suggestions, selectedIndex, value, generating, selectSuggestion, onSubmit, allowEmptySubmit],
   );
 
   const handleSuggestionClick = useCallback(
@@ -133,7 +137,7 @@ export function PromptInput({ value, onChange, onSubmit, generating, onCancel }:
       <textarea
         ref={textareaRef}
         className="prompt-textarea"
-        placeholder="描述你想要的图像 ..."
+        placeholder={placeholder}
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -159,7 +163,7 @@ export function PromptInput({ value, onChange, onSubmit, generating, onCancel }:
         <button
           className="prompt-submit-btn"
           onClick={handleSubmit}
-          disabled={generating || !value.trim()}
+          disabled={generating || (!allowEmptySubmit && !value.trim())}
         >
           生成
         </button>

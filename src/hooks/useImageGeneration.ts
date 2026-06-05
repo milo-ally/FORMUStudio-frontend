@@ -3,13 +3,21 @@ import {
   createImageEditTask,
   fetchImageTasks,
 } from "../lib/api";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { ImageTask, StoredImage } from "../types";
+
+const IN_FLIGHT_KEY = "in_flight_image_tasks";
 
 export function useImageGeneration() {
   const [images, setImages] = useState<StoredImage[]>([]);
   const [generating, setGenerating] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const addLoadingImages = useCallback(
     (ids: string[]) => {
@@ -52,6 +60,51 @@ export function useImageGeneration() {
     [],
   );
 
+  // Recover in-flight tasks after page refresh
+  useEffect(() => {
+    const saved = localStorage.getItem(IN_FLIGHT_KEY);
+    if (!saved) return;
+    let ids: string[] = [];
+    try { ids = JSON.parse(saved); } catch { return; }
+    if (ids.length === 0) return;
+
+    addLoadingImages(ids);
+    setGenerating(true);
+
+    const poll = async () => {
+      if (!mountedRef.current) return;
+      try {
+        const { items, missing_ids } = await fetchImageTasks(ids);
+        if (!mountedRef.current) return;
+
+        const finished = new Set(["success", "error"]);
+        for (const task of items) {
+          updateImageFromTask(task);
+        }
+
+        const allDone = ids.every(
+          (id) => finished.has(items.find((i) => i.id === id)?.status ?? ""),
+        );
+
+        if (!allDone && missing_ids.length === 0) {
+          pollingRef.current = setTimeout(poll, 2000);
+        } else {
+          setGenerating(false);
+          localStorage.removeItem(IN_FLIGHT_KEY);
+        }
+      } catch {
+        if (mountedRef.current) {
+          pollingRef.current = setTimeout(poll, 3000);
+        }
+      }
+    };
+    poll();
+
+    return () => {
+      if (pollingRef.current) clearTimeout(pollingRef.current);
+    };
+  }, [addLoadingImages, updateImageFromTask]);
+
   const startGeneration = useCallback(
     async (
       prompt: string,
@@ -70,6 +123,7 @@ export function useImageGeneration() {
       addLoadingImages(taskIds);
 
       setGenerating(true);
+      localStorage.setItem(IN_FLIGHT_KEY, JSON.stringify(taskIds));
 
       const tasks: Promise<ImageTask>[] = taskIds.map((id) =>
         mode === "edit" && referenceFiles?.length
@@ -96,6 +150,7 @@ export function useImageGeneration() {
           pollingRef.current = setTimeout(poll, 2000);
         } else {
           setGenerating(false);
+          localStorage.removeItem(IN_FLIGHT_KEY);
         }
       };
 
@@ -111,6 +166,7 @@ export function useImageGeneration() {
     }
     setImages((prev) => prev.filter((img) => img.status !== "loading"));
     setGenerating(false);
+    localStorage.removeItem(IN_FLIGHT_KEY);
   }, []);
 
   const addImage = useCallback((image: StoredImage) => {
@@ -125,6 +181,7 @@ export function useImageGeneration() {
     if (pollingRef.current) clearTimeout(pollingRef.current);
     setImages([]);
     setGenerating(false);
+    localStorage.removeItem(IN_FLIGHT_KEY);
   }, []);
 
   return { images, generating, startGeneration, cancelGeneration, addImage, removeImage, clearImages };

@@ -8,8 +8,10 @@ import { Select } from "./components/Select";
 import { PresetEditor } from "./components/PresetEditor";
 import { Toast } from "./components/Toast";
 import { useImageGeneration } from "./hooks/useImageGeneration";
+import { use3DGeneration } from "./hooks/use3DGeneration";
 import { useTheme } from "./hooks/useTheme";
 import { useToast } from "./hooks/useToast";
+import { ThreeDModule } from "./components/ThreeDModule";
 import { fetchModels } from "./lib/api";
 import { base64ToFile } from "./lib/utils";
 import { fetchProjects, saveProject, removeProject, fetchWorks, saveWork, removeWork, fetchPresets, savePreset, removePreset, fetchSetting, saveSetting } from "./lib/dataApi";
@@ -23,6 +25,9 @@ import "./App.css";
 function App() {
   const { theme, toggle: toggleTheme } = useTheme();
   const toast = useToast();
+
+  // Tab
+  const [tab, setTab] = useState<"image" | "3d">("image");
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -175,6 +180,15 @@ function App() {
   const [promotedIds, setPromotedIds] = useState<Set<string>>(new Set());
 
   const { images, generating, startGeneration, cancelGeneration, addImage, removeImage } = useImageGeneration();
+
+  const {
+    jobs: threeDJobs,
+    generating: generating3D,
+    startGeneration: start3DGeneration,
+    cancelJob: cancel3DJob,
+    clearJob: clear3DJob,
+    clearAllJobs: clearAll3DJobs,
+  } = use3DGeneration();
 
   // Load models
   useEffect(() => {
@@ -514,6 +528,17 @@ function App() {
 
   return (
     <div className="app">
+      <div className="bg-bubbles" aria-hidden="true">
+        <span className="bubble bubble-1" />
+        <span className="bubble bubble-2" />
+        <span className="bubble bubble-3" />
+        <span className="bubble bubble-4" />
+        <span className="bubble bubble-5" />
+        <span className="bubble bubble-6" />
+        <span className="bubble bubble-7" />
+        <span className="bubble bubble-8" />
+      </div>
+
       {/* ===== Header ===== */}
       <header className="app-header">
         <div className="header-left">
@@ -522,6 +547,24 @@ function App() {
           </h1>
           <span className="logo-badge">beta</span>
         </div>
+        <div
+          className="toggle-group header-toggle-group"
+          style={{ "--toggle-pos": tab === "image" ? "0" : "1" } as React.CSSProperties}
+        >
+          <button
+            className={`toggle-btn ${tab === "image" ? "active" : ""}`}
+            onClick={() => setTab("image")}
+          >
+            图像生成
+          </button>
+          <button
+            className={`toggle-btn ${tab === "3d" ? "active" : ""}`}
+            onClick={() => setTab("3d")}
+          >
+            3D 模型生成
+          </button>
+        </div>
+
         <div className="header-right">
           <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? "收起侧栏" : "展开侧栏"}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -562,126 +605,142 @@ function App() {
         </div>
 
         <div className="content-area">
-          <section className="hero-section">
-            <div className="hero-inner">
-              <h2 className="hero-title">为记忆，塑实体</h2>
+          {tab === "image" ? (
+            <>
+              <section className="hero-section">
+                <div className="hero-inner">
+                  <h2 className="hero-title">为记忆，塑实体</h2>
 
-              <div className="prompt-card">
-                <PromptInput
-                  value={prompt}
-                  onChange={setPrompt}
-                  onSubmit={handleSubmit}
-                  generating={generating}
-                  onCancel={cancelGeneration}
-                />
+                  <div className="prompt-card">
+                    <PromptInput
+                      value={prompt}
+                      onChange={setPrompt}
+                      onSubmit={handleSubmit}
+                      generating={generating}
+                      onCancel={cancelGeneration}
+                      category="image"
+                    />
 
-                <div className="prompt-settings">
-                  <div className="ps-item">
-                    <div className="toggle-group" style={{ "--toggle-pos": mode === "generate" ? "0" : "1" } as React.CSSProperties}>
-                      <button className={`toggle-btn ${mode === "generate" ? "active" : ""}`} onClick={() => setMode("generate")}>
-                        文生图
-                      </button>
-                      <button className={`toggle-btn ${mode === "edit" ? "active" : ""}`} onClick={() => setMode("edit")}>
-                        图生图
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="ps-item">
-                    <Select className="ps-select" value={model} options={models} onChange={setModel} />
-                  </div>
-
-                  <div className="ps-item">
-                    <Select className="ps-select" value={ratio} options={[
-                      { value: "1:1", label: "1:1 (1024×1024)" },
-                      { value: "4:3", label: "4:3 (1152×896)" },
-                      { value: "3:2", label: "3:2 (1216×832)" },
-                      { value: "16:9", label: "16:9 (1344×768)" },
-                      { value: "9:16", label: "9:16 (768×1344)" },
-                      { value: "2:3", label: "2:3 (832×1216)" },
-                      { value: "3:4", label: "3:4 (896×1152)" },
-                    ]} onChange={(v) => setRatio(v as ImageRatio)} />
-                  </div>
-
-                  <div className="ps-item">
-                    <Select className="ps-select" value={quality} options={[
-                      { value: "auto", label: "自动" },
-                      { value: "high", label: "高清" },
-                      { value: "standard", label: "标准" },
-                    ]} onChange={setQuality} />
-                  </div>
-
-                  {mode === "edit" && (
-                    <div className="ps-item">
-                      <label className="ps-upload-btn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                          <circle cx="8.5" cy="8.5" r="1.5" />
-                          <polyline points="21 15 16 10 5 21" />
-                        </svg>
-                        {referenceFiles.length > 0 ? `${referenceFiles.length} 张图` : "参考图"}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="ps-file-hidden"
-                          onChange={(e) => {
-                            if (e.target.files) {
-                              setReferenceFiles([...referenceFiles, ...Array.from(e.target.files)].slice(0, 5));
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {mode === "edit" && referenceFiles.length > 0 && (
-                  <div className="prompt-ref-previews">
-                    {referenceFiles.map((file, i) => (
-                      <div key={i} className="prompt-ref-thumb">
-                        <img src={URL.createObjectURL(file)} alt="" />
-                        <button
-                          className="prompt-ref-remove"
-                          onClick={() => setReferenceFiles(referenceFiles.filter((_, j) => j !== i))}
-                        >
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
-                          </svg>
-                        </button>
+                    <div className="prompt-settings">
+                      <div className="ps-item">
+                        <div className="toggle-group" style={{ "--toggle-pos": mode === "generate" ? "0" : "1" } as React.CSSProperties}>
+                          <button className={`toggle-btn ${mode === "generate" ? "active" : ""}`} onClick={() => setMode("generate")}>
+                            文生图
+                          </button>
+                          <button className={`toggle-btn ${mode === "edit" ? "active" : ""}`} onClick={() => setMode("edit")}>
+                            图生图
+                          </button>
+                        </div>
                       </div>
-                    ))}
+
+                      <div className="ps-item">
+                        <Select className="ps-select" value={model} options={models} onChange={setModel} />
+                      </div>
+
+                      <div className="ps-item">
+                        <Select className="ps-select" value={ratio} options={[
+                          { value: "1:1", label: "1:1 (1024×1024)" },
+                          { value: "4:3", label: "4:3 (1152×896)" },
+                          { value: "3:2", label: "3:2 (1216×832)" },
+                          { value: "16:9", label: "16:9 (1344×768)" },
+                          { value: "9:16", label: "9:16 (768×1344)" },
+                          { value: "2:3", label: "2:3 (832×1216)" },
+                          { value: "3:4", label: "3:4 (896×1152)" },
+                        ]} onChange={(v) => setRatio(v as ImageRatio)} />
+                      </div>
+
+                      <div className="ps-item">
+                        <Select className="ps-select" value={quality} options={[
+                          { value: "auto", label: "自动" },
+                          { value: "high", label: "高清" },
+                          { value: "standard", label: "标准" },
+                        ]} onChange={setQuality} />
+                      </div>
+
+                      {mode === "edit" && (
+                        <div className="ps-item">
+                          <label className="ps-upload-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="3" y="3" width="18" height="18" rx="2" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            {referenceFiles.length > 0 ? `${referenceFiles.length} 张图` : "参考图"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="ps-file-hidden"
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  setReferenceFiles([...referenceFiles, ...Array.from(e.target.files)].slice(0, 5));
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
+                    {mode === "edit" && referenceFiles.length > 0 && (
+                      <div className="prompt-ref-previews">
+                        {referenceFiles.map((file, i) => (
+                          <div key={i} className="prompt-ref-thumb">
+                            <img src={URL.createObjectURL(file)} alt="" />
+                            <button
+                              className="prompt-ref-remove"
+                              onClick={() => setReferenceFiles(referenceFiles.filter((_, j) => j !== i))}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          </section>
+                </div>
+              </section>
 
-          {/* ===== Draft Area ===== */}
-          <DraftArea
-            images={images}
-            generating={generating}
-            prompt={lastPrompt}
-            promotedIds={promotedIds}
-            onCancel={handleCancelGeneration}
-            onPromote={handlePromoteToWorks}
-            onDiscard={handleDiscardDraft}
-            onImport={handleImportFiles}
-            onUseAsReference={handleUseAsReference}
-          />
+              <DraftArea
+                images={images}
+                generating={generating}
+                prompt={lastPrompt}
+                promotedIds={promotedIds}
+                onCancel={handleCancelGeneration}
+                onPromote={handlePromoteToWorks}
+                onDiscard={handleDiscardDraft}
+                onImport={handleImportFiles}
+                onUseAsReference={handleUseAsReference}
+              />
 
-          {/* ===== Gallery ===== */}
-          <section className="gallery-section">
-            <Gallery
-              presets={resolvedPresets}
-              works={successWorks}
-              onSelectPreset={handlePresetSelect}
-              onEditPreset={handleEditPreset}
-              onAddPreset={handleAddPreset}
-              onPreviewWork={handlePreviewWork}
-              onDeleteWork={handleDeleteWork}
+              <section className="gallery-section">
+                <Gallery
+                  presets={resolvedPresets}
+                  works={successWorks}
+                  onSelectPreset={handlePresetSelect}
+                  onEditPreset={handleEditPreset}
+                  onAddPreset={handleAddPreset}
+                  onPreviewWork={handlePreviewWork}
+                  onDeleteWork={handleDeleteWork}
+                />
+              </section>
+            </>
+          ) : (
+            <ThreeDModule
+              works={works}
+              projects={projects}
+              activeProject={activeProject}
+              onSelectProject={handleSelectProject}
+              jobs={threeDJobs}
+              generating={generating3D}
+              onStartGeneration={start3DGeneration}
+              onCancelJob={cancel3DJob}
+              onClearJob={clear3DJob}
+              onClearAllJobs={clearAll3DJobs}
             />
-          </section>
+          )}
         </div>
       </div>
 

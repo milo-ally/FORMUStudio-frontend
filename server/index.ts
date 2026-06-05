@@ -186,13 +186,15 @@ const server = Bun.serve({
 
       // ── Prompt History ──
       if (path === "/api/data/prompt-history" && method === "GET") {
-        return cors(json(listPromptHistory()));
+        const category = url.searchParams.get("category") || "image";
+        return cors(json(listPromptHistory(category)));
       }
 
       if (path === "/api/data/prompt-history" && method === "POST") {
         const body = await readBody(req);
         const prompt = (body.prompt as string)?.trim();
-        if (prompt) upsertPrompt(prompt);
+        const category = (body.category as string) || "image";
+        if (prompt) upsertPrompt(prompt, category);
         return cors(json({ ok: true }));
       }
 

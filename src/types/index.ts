@@ -90,3 +90,20 @@ export interface CustomPresetMeta {
   prompt: string;
   ratio?: string;
 }
+
+// ── 3D 模型生成 ──
+
+export type ThreeDJobStatus = "WAIT" | "RUN" | "DONE" | "FAIL";
+
+export interface ResultFile3D {
+  type: string; // OBJ, FBX, MTL, IMAGE, POSTPROCESS_OBJ
+  url: string;
+}
+
+export interface ThreeDJob {
+  job_id: string;
+  status: ThreeDJobStatus;
+  result_files: ResultFile3D[];
+  error_code: string;
+  error_message: string;
+}

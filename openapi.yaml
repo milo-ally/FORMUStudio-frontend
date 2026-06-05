@@ -187,7 +187,123 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  # ── 3D 模型生成（混元） ──────────────────────────────
+
+  /api/3d/submit:
+    post:
+      summary: 提交 3D 生成任务
+      description: |
+        提交异步 3D 模型生成请求（文生3D / 图生3D），
+        返回任务 ID，前端通过 `/api/3d/query` 轮询获取最终结果。
+      operationId: submit3D
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+                  minLength: 1
+                  description: 文本描述或提示词
+                  example: "一只可爱的小狗"
+                image_url:
+                  type: string
+                  nullable: true
+                  description: |
+                    参考图片。支持两种方式：
+                    - 图片 URL（如 `https://example.com/photo.jpg`）
+                    - base64 data URL（如 `data:image/jpeg;base64,xxxxxxx`）
+                model:
+                  type: string
+                  default: "3.0"
+                  description: 模型版本。`3.0`（默认，支持 LowPoly/Sketch）或 `3.1`
+                  enum: ["3.0", "3.1"]
+      responses:
+        "200":
+          description: 任务已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submit3DResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          description: 上游 3D API 错误
+
+  /api/3d/query:
+    post:
+      summary: 查询 3D 任务状态
+      description: |
+        根据任务 ID 查询 3D 生成任务的最新状态和结果。
+        状态为 `DONE` 时 `result_files` 包含生成的文件列表。
+      operationId: query3D
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job_id]
+              properties:
+                job_id:
+                  type: string
+                  minLength: 1
+                  description: 提交任务时返回的 JobId
+                  example: "1387416933258346496"
+      responses:
+        "200":
+          description: 任务状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Query3DResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          description: 上游 3D API 错误
+
   # ── 模型列表 ───────────────────────────────────────────
+
+  /api/3d/convert:
+    post:
+      summary: 3D 模型格式转换
+      description: |
+        将 OBJ / FBX / GLB 格式的 3D 文件转换为指定格式。
+        支持输出：STL、USDZ、FBX、MP4、GIF。
+      operationId: convert3DFormat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Convert3DRequest"
+      responses:
+        "200":
+          description: 转换成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Convert3DResponse"
+        "400":
+          description: 转换失败（文件格式不兼容、文件过大等）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /v1/models:
     get:
@@ -246,6 +362,17 @@ components:
               detail:
                 type: string
                 example: "Not authenticated"
+
+    Unauthorized:
+      description: 密钥无效或已失效
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "密钥无效或已失效，请重新登录"
 
   schemas:
     ImageTask:
@@ -335,19 +462,99 @@ components:
             type: string
           description: 服务端不存在的任务 ID（可能从未创建或已过期）
 
+    # ── 3D ──
+
+    Submit3DResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: 3D 生成任务 ID（有效期 24 小时）
+          example: "1387416933258346496"
+
+    Query3DResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: 任务 ID
+        status:
+          type: string
+          enum: [WAIT, RUN, FAIL, DONE]
+          description: |
+            任务状态：
+            - `WAIT` — 等待中
+            - `RUN` — 执行中
+            - `FAIL` — 失败
+            - `DONE` — 成功，`result_files` 有结果
+        result_files:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResultFile3D"
+          description: 生成的 3D 文件列表（仅 DONE 时有效）
+        error_code:
+          type: string
+          description: 错误码（仅 FAIL 时有效）
+        error_message:
+          type: string
+          description: 错误信息（仅 FAIL 时有效）
+
+    ResultFile3D:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 文件类型（如 OBJ, FBX, MTL, IMAGE, POSTPROCESS_OBJ）
+          example: "OBJ"
+        url:
+          type: string
+          description: 文件下载地址
+          example: "https://cos.ap-guangzhou.myqcloud.com/model.obj"
+
+    Convert3DRequest:
+      type: object
+      required:
+        - file_url
+        - format
+      properties:
+        file_url:
+          type: string
+          description: 源文件 URL（OBJ / FBX / GLB）
+          example: "https://cos.ap-guangzhou.tencentcos.cn/model.obj"
+        format:
+          type: string
+          description: 目标格式
+          enum: [STL, USDZ, FBX, MP4, GIF]
+          example: "STL"
+
+    Convert3DResponse:
+      type: object
+      properties:
+        result_url:
+          type: string
+          description: 转换后的文件下载地址
+          example: "https://cos.ap-guangzhou.tencentcos.cn/model.stl"
+
 # ── 集成指南 ────────────────────────────────────────────────
 
 x-integration-guide:
-  轮询流程: |
+  图片生成轮询流程: |
     1. 前端 POST /api/image-tasks/generations 或 /api/image-tasks/edits，获得任务 ID
     2. 前端每 2 秒 GET /api/image-tasks?ids=id1,id2,... 查询状态
     3. 当所有任务 status 为 success 或 error 时停止轮询
     4. 若长时间未完成（超时），调用 POST /api/image-tasks/{id}/resume-poll 续询
+
+  3D 生成轮询流程: |
+    1. 前端 POST /api/3d/submit，获得 JobId
+    2. 前端定时 POST /api/3d/query 查询状态
+    3. 当 status 为 DONE 或 FAIL 时停止轮询
+    4. DONE 时从 result_files 获取 3D 文件下载地址
+    5. 需要其他格式时，POST /api/3d/convert 进行格式转换
 
   认证: |
     所有接口通过 HTTP 头 `Authorization: Bearer <key>` 认证。
     前端通过环境变量 `VITE_AUTH_KEY` 配置密钥，默认值为 `dummy`。
 
   最低实现: |
-    只需实现 5 个接口，返回符合 Schema 的 JSON 即可接入。
+    图片生成需实现 5 个接口，3D 生成需实现 2 个接口，返回符合 Schema 的 JSON 即可接入。
     图片建议返回 base64（`b64_json` 字段），避免前端处理跨域和 URL 过期问题。

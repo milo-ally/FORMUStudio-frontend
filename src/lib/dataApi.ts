@@ -119,17 +119,17 @@ export async function removePreset(id: string): Promise<void> {
 
 interface PromptEntry { prompt: string; count: number; last_used: number }
 
-export async function fetchPromptHistory(): Promise<PromptEntry[]> {
-  const res = await fetch(`${DATA_URL}/prompt-history`);
+export async function fetchPromptHistory(category = "image"): Promise<PromptEntry[]> {
+  const res = await fetch(`${DATA_URL}/prompt-history?category=${encodeURIComponent(category)}`);
   if (!res.ok) throw new Error(`Failed to fetch prompt history: ${res.status}`);
   return res.json();
 }
 
-export async function addPromptEntry(prompt: string): Promise<void> {
+export async function addPromptEntry(prompt: string, category = "image"): Promise<void> {
   await fetch(`${DATA_URL}/prompt-history`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, category }),
   });
 }
 

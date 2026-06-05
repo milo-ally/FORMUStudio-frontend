@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { ImageTask, ImageTaskListResponse } from "../types";
+import type { ImageTask, ImageTaskListResponse, ThreeDJob } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const AUTH_KEY = import.meta.env.VITE_AUTH_KEY || "dummy";
@@ -93,4 +93,39 @@ export async function fetchModels(): Promise<string[]> {
   return (Array.isArray(data.data) ? data.data : [])
     .map((m: { id: string }) => m.id)
     .filter(isImageModel);
+}
+
+// ── 3D 模型生成 ──
+
+/** 提交 3D 生成任务（文生3D / 图生3D） */
+export async function submit3DGeneration(
+  prompt: string,
+  opts: { model?: string; image_url?: string } = {},
+): Promise<{ job_id: string }> {
+  const { data } = await http.post<{ job_id: string }>("/api/3d/submit", {
+    prompt,
+    model: opts.model || "3.0",
+    image_url: opts.image_url || undefined,
+  });
+  return data;
+}
+
+/** 查询 3D 任务状态 */
+export async function query3DJob(jobId: string): Promise<ThreeDJob> {
+  const { data } = await http.post<ThreeDJob>("/api/3d/query", {
+    job_id: jobId,
+  });
+  return data;
+}
+
+/** 格式转换（OBJ → STL / USDZ / MP4 / GIF） */
+export async function convert3DFormat(
+  fileUrl: string,
+  format: string,
+): Promise<{ result_url: string }> {
+  const { data } = await http.post<{ result_url: string }>("/api/3d/convert", {
+    file_url: fileUrl,
+    format,
+  });
+  return data;
 }

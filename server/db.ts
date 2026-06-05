@@ -47,9 +47,11 @@ function migrate(db: Database) {
     );
 
     CREATE TABLE IF NOT EXISTS prompt_history (
-      prompt TEXT PRIMARY KEY,
+      prompt TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'image',
       count INTEGER DEFAULT 1,
-      last_used INTEGER NOT NULL
+      last_used INTEGER NOT NULL,
+      PRIMARY KEY (prompt, category)
     );
 
     CREATE TABLE IF NOT EXISTS settings (
@@ -60,6 +62,24 @@ function migrate(db: Database) {
     CREATE INDEX IF NOT EXISTS idx_works_project ON works(project_id);
     CREATE INDEX IF NOT EXISTS idx_presets_custom ON presets(is_custom);
   `);
+
+  // Migrate old prompt_history table that lacks the category column
+  const cols = db.query("PRAGMA table_info(prompt_history)").all() as { name: string }[];
+  if (!cols.some((c) => c.name === "category")) {
+    db.exec(`
+      CREATE TABLE prompt_history_new (
+        prompt TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'image',
+        count INTEGER DEFAULT 1,
+        last_used INTEGER NOT NULL,
+        PRIMARY KEY (prompt, category)
+      );
+      INSERT INTO prompt_history_new (prompt, category, count, last_used)
+        SELECT prompt, 'image', count, last_used FROM prompt_history;
+      DROP TABLE prompt_history;
+      ALTER TABLE prompt_history_new RENAME TO prompt_history;
+    `);
+  }
 }
 
 // ── Projects ──
@@ -171,19 +191,19 @@ export interface PromptHistoryRow {
   last_used: number;
 }
 
-export function listPromptHistory(): PromptHistoryRow[] {
+export function listPromptHistory(category: string): PromptHistoryRow[] {
   return getDb()
-    .query("SELECT * FROM prompt_history ORDER BY count DESC, last_used DESC LIMIT 50")
-    .all() as PromptHistoryRow[];
+    .query("SELECT * FROM prompt_history WHERE category = ? ORDER BY count DESC, last_used DESC LIMIT 50")
+    .all(category) as PromptHistoryRow[];
 }
 
-export function upsertPrompt(prompt: string) {
+export function upsertPrompt(prompt: string, category: string) {
   getDb().run(
-    `INSERT INTO prompt_history (prompt, count, last_used) VALUES (?, 1, ?)
-     ON CONFLICT(prompt) DO UPDATE SET
+    `INSERT INTO prompt_history (prompt, category, count, last_used) VALUES (?, ?, 1, ?)
+     ON CONFLICT(prompt, category) DO UPDATE SET
        count = count + 1,
        last_used = excluded.last_used`,
-    [prompt, Date.now()],
+    [prompt, category, Date.now()],
   );
 }
 
