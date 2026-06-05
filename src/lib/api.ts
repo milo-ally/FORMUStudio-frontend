@@ -97,6 +97,21 @@ export async function fetchModels(): Promise<string[]> {
 
 // ── 3D 模型生成 ──
 
+/** 判断模型 ID 是否为 3D 生成模型 */
+export function isThreeDModel(modelId: string): boolean {
+  const MODEL_PATTERNS = ["3d", "hunyuan"];
+  const lower = modelId.toLowerCase();
+  return MODEL_PATTERNS.some((p) => lower.includes(p));
+}
+
+/** 获取可用的 3D 模型列表 */
+export async function fetch3DModels(): Promise<string[]> {
+  const { data } = await http.get<{ data: { id: string }[] }>("/api/3d/models");
+  return (Array.isArray(data.data) ? data.data : [])
+    .map((m: { id: string }) => m.id)
+    .filter(isThreeDModel);
+}
+
 /** 提交 3D 生成任务（文生3D / 图生3D） */
 export async function submit3DGeneration(
   prompt: string,

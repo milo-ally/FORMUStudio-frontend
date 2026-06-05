@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ThreeDHero } from "./ThreeDHero";
 import { WorkPicker } from "./WorkPicker";
 import { ThreeDJobArea } from "./ThreeDJobArea";
+import { fetch3DModels } from "../lib/api";
 import type { ImageSourceType } from "./ThreeDHero";
 import type { Project, WorkMeta } from "../types";
 import type { JobEntry } from "../hooks/use3DGeneration";
@@ -53,7 +54,18 @@ export function ThreeDModule({
 
   const submittingRef = useRef(false);
 
-  const models = ["hunyuan-3d-3.0", "hunyuan-3d-3.1"];
+  const [models, setModels] = useState<string[]>(["hunyuan-3d-3.1"]);
+
+  useEffect(() => {
+    fetch3DModels()
+      .then((list) => {
+        if (list.length > 0) {
+          setModels(list);
+          if (!list.includes(model)) setModel(list[0]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleCancelAll = useCallback(() => {
     for (const entry of jobs) {

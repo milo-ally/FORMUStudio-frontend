@@ -189,6 +189,32 @@ paths:
 
   # ── 3D 模型生成（混元） ──────────────────────────────
 
+  /api/3d/models:
+    get:
+      summary: 获取可用的 3D 生成模型列表
+      description: |
+        返回当前支持的 3D 生成模型版本列表。
+        前端使用 `isThreeDModel` 函数过滤有效的 3D 模型。
+      operationId: list3DModels
+      responses:
+        "200":
+          description: 模型列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "hunyuan-3d-3.1"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/3d/submit:
     post:
       summary: 提交 3D 生成任务
