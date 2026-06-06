@@ -107,3 +107,37 @@ export interface ThreeDJob {
   error_code: string;
   error_message: string;
 }
+
+// ── 拼豆模块 ──
+
+export interface MappedPixel {
+  key: string;
+  color: string;
+  isExternal?: boolean;
+}
+
+export interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+export interface PaletteColor {
+  key: string;
+  hex: string;
+  rgb: RgbColor;
+}
+
+export type PixelationMode = "dominant" | "average";
+
+export type ColorSystem = "MARD" | "COCO" | "漫漫" | "盼盼" | "咪小窝";
+
+export interface PerlerExportOptions {
+  showGrid: boolean;
+  gridInterval: number;
+  showCoordinates: boolean;
+  showCellNumbers: boolean;
+  gridLineColor: string;
+  includeStats: boolean;
+  exportCsv: boolean;
+}

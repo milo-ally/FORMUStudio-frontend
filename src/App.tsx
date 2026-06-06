@@ -12,6 +12,7 @@ import { use3DGeneration } from "./hooks/use3DGeneration";
 import { useTheme } from "./hooks/useTheme";
 import { useToast } from "./hooks/useToast";
 import { ThreeDModule } from "./components/ThreeDModule";
+import { PerlerModule } from "./components/PerlerModule";
 import { fetchModels } from "./lib/api";
 import { base64ToFile } from "./lib/utils";
 import { fetchProjects, saveProject, removeProject, fetchWorks, saveWork, removeWork, fetchPresets, savePreset, removePreset, fetchSetting, saveSetting } from "./lib/dataApi";
@@ -27,7 +28,7 @@ function App() {
   const toast = useToast();
 
   // Tab
-  const [tab, setTab] = useState<"image" | "3d">("image");
+  const [tab, setTab] = useState<"image" | "3d" | "perler">("image");
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -549,7 +550,7 @@ function App() {
         </div>
         <div
           className="toggle-group header-toggle-group"
-          style={{ "--toggle-pos": tab === "image" ? "0" : "1" } as React.CSSProperties}
+          style={{ "--toggle-pos": tab === "image" ? "0" : tab === "3d" ? "1" : "2" } as React.CSSProperties}
         >
           <button
             className={`toggle-btn ${tab === "image" ? "active" : ""}`}
@@ -562,6 +563,12 @@ function App() {
             onClick={() => setTab("3d")}
           >
             3D 模型生成
+          </button>
+          <button
+            className={`toggle-btn ${tab === "perler" ? "active" : ""}`}
+            onClick={() => setTab("perler")}
+          >
+            拼豆图纸
           </button>
         </div>
 
@@ -604,9 +611,7 @@ function App() {
           />
         </div>
 
-        <div className="content-area">
-          {tab === "image" ? (
-            <>
+        <div className="content-area" style={{ display: tab === "image" ? "flex" : "none" }}>
               <section className="hero-section">
                 <div className="hero-inner">
                   <h2 className="hero-title">为记忆，塑实体</h2>
@@ -726,8 +731,8 @@ function App() {
                   onDeleteWork={handleDeleteWork}
                 />
               </section>
-            </>
-          ) : (
+        </div>
+        <div className="content-area" style={{ display: tab === "3d" ? "flex" : "none" }}>
             <ThreeDModule
               works={works}
               projects={projects}
@@ -740,7 +745,14 @@ function App() {
               onClearJob={clear3DJob}
               onClearAllJobs={clearAll3DJobs}
             />
-          )}
+        </div>
+        <div className="content-area" style={{ display: tab === "perler" ? "flex" : "none" }}>
+            <PerlerModule
+              works={works}
+              projects={projects}
+              activeProject={activeProject}
+              onSelectProject={handleSelectProject}
+            />
         </div>
       </div>
 

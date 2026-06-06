@@ -2153,9 +2153,13 @@ body {
   flex-shrink: 0;
 }
 
+.header-toggle-group::before {
+  width: calc(33.333% - 3px);
+}
+
 .header-toggle-group .toggle-btn {
   height: 32px;
-  padding: 0 22px;
+  padding: 0 18px;
   font-size: 13px;
   white-space: nowrap;
 }
@@ -2844,14 +2848,809 @@ body {
   color: var(--accent);
 }
 
-/* ========== Responsive ========== */
+/* ========== Perler Beads Module ========== */
+
+.perler-module {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.perler-content {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Source picker row */
+.perler-source-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.perler-source-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 16px;
+  border-radius: var(--radius);
+  border: 2px dashed var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.perler-source-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glass);
+}
+
+.perler-source-btn.active,
+.perler-source-btn.has-image {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glass);
+}
+
+.perler-source-btn-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.perler-source-btn-hint {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* Source image preview (above result) */
+.perler-source-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-top: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+.perler-source-preview img {
+  height: 80px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  object-fit: contain;
+  background: var(--bg-hover);
+}
+
+.perler-source-preview-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.perler-source-preview-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.perler-source-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.perler-source-clear:hover {
+  background: var(--error-bg);
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.perler-clear-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.perler-clear-btn:hover {
+  color: var(--error);
+  border-color: var(--error);
+  background: var(--error-bg);
+}
+
+/* Generate button row */
+.perler-generate-row {
+  padding: 16px 20px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.perler-generate-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.perler-generate-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+.perler-generate-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.perler-generate-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Settings bar inside prompt-card */
+.perler-settings-bar {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.perler-setting-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.perler-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: var(--transition);
+}
+
+.perler-stepper:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glass);
+}
+
+.perler-stepper-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.perler-stepper-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.perler-stepper-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.perler-num-input {
+  width: 56px;
+  height: 32px;
+  padding: 0 4px;
+  border: none;
+  border-left: 1px solid var(--glass-border);
+  border-right: 1px solid var(--glass-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.perler-num-input::-webkit-inner-spin-button,
+.perler-num-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Fade-in animation for pattern result */
+.perler-fade-in {
+  animation: perlerFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes perlerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tooltip */
+.perler-tooltip {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 6px 16px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+/* ── Result Section ── */
+
+.perler-result-section {
+  margin-top: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.perler-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.perler-result-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.perler-result-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Preview area */
+.perler-preview {
+  display: flex;
+  flex-direction: column;
+}
+
+.perler-preview-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: var(--bg-hover);
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+
+.perler-preview-zoom button {
+  padding: 3px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+
+.perler-preview-zoom button:hover {
+  background: var(--bg-hover);
+}
+
+.perler-preview-zoom > span {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: center;
+}
+
+.perler-cellnum-toggle {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.perler-cellnum-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.perler-current-brush {
+  margin-left: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.perler-brush-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--glass-border);
+}
+
+.perler-preview-canvas-wrap {
+  min-height: 240px;
+  max-height: 520px;
+  overflow: hidden;
+  background: var(--bg-hover);
+}
+
+/* ── Color Section ── */
+
+.perler-color-section {
+  margin-top: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.perler-color-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.perler-section-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.perler-color-total {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.perler-color-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Swatch strip */
+.perler-swatch-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 14px 24px;
+}
+
+.perler-swatch-chip {
+  width: 38px;
+  height: 38px;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, border-color 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.perler-swatch-chip:hover {
+  transform: scale(1.2);
+  z-index: 2;
+}
+
+.perler-swatch-chip.sel {
+  border-color: #3b82f6;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.perler-swatch-chip.hl {
+  border-color: #f59e0b;
+}
+
+.perler-swatch-chip.eraser {
+  background: repeating-linear-gradient(45deg, #eee, #eee 3px, #ddd 3px, #ddd 6px);
+  color: #999;
+  border: 2px solid var(--glass-border);
+}
+
+[data-theme="dark"] .perler-swatch-chip.eraser {
+  background: repeating-linear-gradient(45deg, #333, #333 3px, #444 4px, #444 7px);
+}
+
+.perler-swatch-chip-label {
+  font-size: 8px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.perler-swatch-chip-count {
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Stats table */
+.perler-stats-wrap {
+  border-top: 1px solid var(--glass-border);
+}
+
+.perler-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.perler-stats-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-hover);
+  padding: 9px 20px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.perler-stats-table td {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.perler-stats-table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+
+.perler-row-hl td {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.perler-stat-dot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--glass-border);
+  vertical-align: middle;
+}
+
+.perler-stat-mono {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 12px;
+}
+
+.perler-stats-expand {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.perler-stats-expand:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* Modal base */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 20px 24px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 0 24px 20px;
+}
+
+.btn-cancel {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-cancel:hover {
+  background: var(--bg-hover);
+}
+
+.btn-primary {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 18px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Export modal */
+.perler-export-modal {
+  max-width: 420px;
+}
+
+.perler-export-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.perler-export-sub {
+  margin-left: 24px;
+  display: flex;
+  gap: 16px;
+}
+
+.perler-export-sub label {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.perler-export-sub select {
+  padding: 4px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.btn-accent {
+  background: var(--accent) !important;
+  color: var(--accent-fg) !important;
+  border: none !important;
+}
+
+/* Perler action buttons */
+.perler-action-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.perler-action-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  transform: translateY(-0.5px);
+  box-shadow: var(--glass-shadow);
+}
+
+.perler-action-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.perler-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.perler-action-btn.primary {
+  border: none;
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.perler-action-btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+/* ── Responsive ── */
 @media (max-width: 768px) {
-  .hero-title {
-    font-size: 24px;
+  .perler-source-row {
+    grid-template-columns: 1fr;
   }
 
-  .prompt-input-wrapper {
-    border-radius: var(--radius-lg);
-    padding: 12px 12px 12px 18px;
+  .perler-generate-row {
+    padding: 12px 16px;
+  }
+
+  .perler-result-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .perler-swatch-chip {
+    width: 32px;
+    height: 32px;
   }
 }
