@@ -1,0 +1,137 @@
+/* ========== Work Picker ========== */
+.workpicker-section {
+  padding: 0 24px 20px;
+  flex-shrink: 0;
+}
+
+.workpicker-inner {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.workpicker-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.workpicker-projects {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.workpicker-project-tag {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.workpicker-project-tag:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.workpicker-project-tag.active {
+  background: var(--accent-glass);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.workpicker-project-count {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.workpicker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 0;
+  color: var(--text-muted);
+}
+
+.workpicker-empty svg {
+  opacity: 0.35;
+}
+
+.workpicker-empty p {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.workpicker-empty span {
+  font-size: 12px;
+}
+
+.workpicker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.workpicker-card {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: var(--bg-card);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.workpicker-card:hover {
+  transform: translateY(-2px);
+}
+
+.workpicker-card.selected {
+  border-color: var(--accent);
+}
+
+.workpicker-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workpicker-card-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--empty-icon);
+}
+
+.workpicker-card-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}

@@ -1,0 +1,386 @@
+/* ========== Draft Area ========== */
+.draft-area {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto 20px;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--border);
+  background: transparent;
+  position: relative;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  flex-shrink: 0;
+}
+
+.draft-area.draft-dragover {
+  border-color: var(--accent);
+  border-style: dashed;
+  background: var(--accent-glass);
+  box-shadow: 0 0 0 3px var(--accent-glass);
+}
+
+.draft-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.draft-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.draft-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+}
+
+.draft-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+}
+
+.draft-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.draft-import-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.draft-import-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.draft-file-hidden {
+  display: none;
+}
+
+.draft-cancel-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.draft-cancel-btn:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.draft-prompt {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Draft cards strip */
+.draft-cards {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.draft-cards::-webkit-scrollbar {
+  height: 4px;
+}
+.draft-cards::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* Single draft card */
+.draft-card {
+  width: 140px;
+  height: 140px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* ====== Loading card: darkroom developing ====== */
+.draft-card-loading {
+  background: #141412;
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Film grain noise */
+.draft-card-loading::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  z-index: 1;
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  animation: grainShift 0.6s steps(4) infinite;
+  pointer-events: none;
+}
+
+@keyframes grainShift {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-3px, 2px); }
+  50%  { transform: translate(1px, -3px); }
+  75%  { transform: translate(-2px, -1px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Center safelight glow */
+.draft-card-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(210, 150, 70, 0.25) 0%,
+    rgba(180, 120, 50, 0.1) 30%,
+    rgba(140, 90, 40, 0.03) 60%,
+    transparent 100%
+  );
+  animation: safelightBreathe 3.2s ease-in-out infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes safelightBreathe {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+/* Scanning line */
+.draft-card-scan {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  z-index: 3;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(200, 150, 80, 0.15) 15%,
+    rgba(220, 180, 100, 0.35) 50%,
+    rgba(200, 150, 80, 0.15) 85%,
+    transparent 100%
+  );
+  box-shadow: 0 0 6px rgba(200, 150, 80, 0.2), 0 8px 12px rgba(200, 150, 80, 0.06);
+  animation: scanDown 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes scanDown {
+  0%   { top: 15%; opacity: 0; }
+  10%  { opacity: 1; }
+  45%  { top: 70%; opacity: 1; }
+  55%  { top: 75%; opacity: 0; }
+  100% { top: 75%; opacity: 0; }
+}
+
+/* Edge light leak */
+.draft-card-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.3;
+  background:
+    radial-gradient(ellipse at 10% 0%, rgba(200, 150, 80, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 90% 100%, rgba(180, 120, 60, 0.06) 0%, transparent 40%);
+  animation: leakShift 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes leakShift {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+}
+
+/* Progress text */
+.draft-card-loading-inner {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+}
+
+.draft-progress {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(200, 160, 100, 0.75);
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(200, 150, 80, 0.3);
+}
+
+/* Error card inner */
+.draft-card-error-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  color: var(--error);
+}
+
+.draft-error-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--error-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.draft-error-text {
+  font-size: 11px;
+}
+
+.draft-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.draft-card-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.draft-card:hover .draft-card-actions {
+  opacity: 1;
+}
+
+.draft-card-btn {
+  width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.draft-card-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.draft-card-discard:hover {
+  background: rgba(220, 38, 38, 0.5);
+  border-color: rgba(220, 38, 38, 0.6);
+}
+
+/* Empty state */
+.draft-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Drop overlay */
+.draft-drop-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background: rgba(28, 28, 30, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 5;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .draft-drop-overlay {
+  background: rgba(240, 240, 238, 0.92);
+  color: #111;
+}

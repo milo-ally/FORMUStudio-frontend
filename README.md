@@ -9,7 +9,6 @@
 - Bun + SQLite（数据持久化服务）
 - Python (FastAPI) chatgpt2api 后端
 - Three.js (@react-three/fiber + @react-three/drei) 3D 模型预览
-- 支持 npm / bun
 
 ## 快速开始
 
@@ -33,7 +32,7 @@ bun run dev:server   # 数据服务 :3001
   └── fetch → localhost:8000 (Python chatgpt2api)  AI 图像 & 3D 生成
 ```
 
-用户数据（项目、作品、预设、提示词历史）全部存在服务端 SQLite 文件 `data/user_data.db` 中，清除浏览器缓存不会丢失数据。进行中的生成任务通过 localStorage 持久化，刷新页面后自动恢复。
+用户数据（项目、作品、预设、提示词历史、拼豆图纸）全部存在服务端 SQLite 文件 `data/user_data.db` 中，清除浏览器缓存不会丢失数据。进行中的生成任务通过 localStorage 持久化，刷新页面后自动恢复。
 
 ## 环境变量
 
@@ -55,54 +54,52 @@ VITE_AUTH_KEY=dummy
 
 ### AI 生成服务（:8000）
 
-> 后端代码均在 `backend/chatgpt2api/` 目录下。所有路由通过 `api/app.py:45-49` 注册。
-
 #### 图像生成
 
-| 方法 | 接口 | 用途 | 后端定义位置 |
-|------|------|------|-------------|
-| `POST` | `/api/image-tasks/generations` | 文生图（异步） | `api/image_tasks.py:49` |
-| `POST` | `/api/image-tasks/edits` | 图生图（multipart，异步） | `api/image_tasks.py:71` |
-| `GET` | `/api/image-tasks?ids=` | 批量轮询任务状态 | `api/image_tasks.py:41` |
-| `POST` | `/api/image-tasks/{id}/resume-poll` | 超时续询 | `api/image_tasks.py:100` |
-| `GET` | `/v1/models` | 图像模型列表 | `api/ai.py:294`，业务逻辑在 `services/protocol/openai_v1_models.py` |
+| 方法 | 接口 | 用途 |
+|------|------|------|
+| `POST` | `/api/image-tasks/generations` | 文生图（异步） |
+| `POST` | `/api/image-tasks/edits` | 图生图（multipart，异步） |
+| `GET` | `/api/image-tasks?ids=` | 批量轮询任务状态 |
+| `POST` | `/api/image-tasks/{id}/resume-poll` | 超时续询 |
+| `GET` | `/v1/models` | 图像模型列表 |
 
 轮询流程：提交任务 → 每 2 秒查状态 → 全部 `success`/`error` 后停止。
 
 #### 3D 模型生成
 
-| 方法 | 接口 | 用途 | 后端定义位置 |
-|------|------|------|-------------|
-| `GET` | `/api/3d/models` | 3D 模型列表 | `api/ai.py:428` |
-| `POST` | `/api/3d/submit` | 提交 3D 生成任务（文生3D / 图生3D） | `api/ai.py:443` |
-| `POST` | `/api/3d/query` | 查询任务状态与结果 | `api/ai.py:458` |
-| `POST` | `/api/3d/convert` | 格式转换（STL / USDZ / MP4 / GIF） | `api/ai.py:480`，TC3 签名在 `api/ai.py:50` |
+| 方法 | 接口 | 用途 |
+|------|------|------|
+| `GET` | `/api/3d/models` | 3D 模型列表 |
+| `POST` | `/api/3d/submit` | 提交 3D 生成任务（文生3D / 图生3D） |
+| `POST` | `/api/3d/query` | 查询任务状态与结果 |
+| `POST` | `/api/3d/convert` | 格式转换（STL / USDZ / MP4 / GIF） |
 
 3D 轮询流程：提交任务 → 获取 `job_id` → 每 3 秒查询状态 → `DONE` 或 `FAIL` 后停止。支持并发生成多个任务。
 
 ### 数据服务（:3001）
 
-> 全部接口在单个文件 `frontend/FORMUStudio/server/index.ts` 中，数据库操作在 `server/db.ts`。
+> 全部接口在 `src/server/index.ts` 中，数据库操作在 `src/server/db.ts`。
 
-| 方法 | 接口 | 用途 | `server/index.ts` 行号 |
-|------|------|------|-----------------------|
-| `GET` | `/api/data/projects` | 列出项目 | 70 |
-| `POST` | `/api/data/projects` | 创建 / 更新项目 | 84 |
-| `DELETE` | `/api/data/projects/{id}` | 删除项目 | 97 |
-| `GET` | `/api/data/works?project_id=` | 按项目列出作品 | 104 |
-| `POST` | `/api/data/works` | 保存作品 | 117 |
-| `DELETE` | `/api/data/works/{id}` | 删除作品 | 130 |
-| `GET` | `/api/data/presets` | 列出预设 | 137 |
-| `PUT` | `/api/data/presets/{id}` | 创建 / 更新预设 | 158 |
-| `DELETE` | `/api/data/presets/{id}` | 删除预设 | 181 |
-| `GET` | `/api/data/prompt-history?category=` | 按类别列出提示词历史 | 188 |
-| `POST` | `/api/data/prompt-history` | 记录提示词 | 193 |
-| `GET` | `/api/data/settings/{key}` | 读取设置 | 202 |
-| `PUT` | `/api/data/settings/{key}` | 写入设置 | 207 |
-| `GET` | `/api/data/perler-patterns?project_id=` | 按项目列出拼豆图纸 | 222 |
-| `POST` | `/api/data/perler-patterns` | 保存新拼豆图纸 | 236 |
-| `PUT` | `/api/data/perler-patterns/{id}` | 更新拼豆图纸 | 257 |
-| `DELETE` | `/api/data/perler-patterns/{id}` | 删除拼豆图纸 | 274 |
+| 方法 | 接口 | 用途 |
+|------|------|------|
+| `GET` | `/api/data/projects` | 列出项目 |
+| `POST` | `/api/data/projects` | 创建 / 更新项目 |
+| `DELETE` | `/api/data/projects/{id}` | 删除项目 |
+| `GET` | `/api/data/works?project_id=` | 按项目列出作品 |
+| `POST` | `/api/data/works` | 保存作品 |
+| `DELETE` | `/api/data/works/{id}` | 删除作品 |
+| `GET` | `/api/data/presets` | 列出预设 |
+| `PUT` | `/api/data/presets/{id}` | 创建 / 更新预设 |
+| `DELETE` | `/api/data/presets/{id}` | 删除预设 |
+| `GET` | `/api/data/prompt-history?category=` | 按类别列出提示词历史 |
+| `POST` | `/api/data/prompt-history` | 记录提示词 |
+| `GET` | `/api/data/settings/{key}` | 读取设置 |
+| `PUT` | `/api/data/settings/{key}` | 写入设置 |
+| `GET` | `/api/data/perler-patterns?project_id=` | 按项目列出拼豆图纸 |
+| `POST` | `/api/data/perler-patterns` | 保存新拼豆图纸 |
+| `PUT` | `/api/data/perler-patterns/{id}` | 更新拼豆图纸 |
+| `DELETE` | `/api/data/perler-patterns/{id}` | 删除拼豆图纸 |
 
 提示词历史按 `category` 区分：图像生成使用 `image`，3D 生成使用 `3d`，互不干扰。
 
@@ -146,52 +143,69 @@ VITE_AUTH_KEY=dummy
 ## 项目结构
 
 ```
-server/
-  index.ts                 — Bun HTTP 数据服务 (3001)
-  db.ts                    — SQLite schema 与查询
 src/
+  App.tsx                       — 应用 Shell（主题、标签路由、项目管理）
+  App.css                       — 全局样式（主题变量、布局、气泡动画）
+  main.tsx                      — Vite 入口
+  api/
+    api.ts                      — AI 生成 API 客户端（图像 + 3D）
+    dataApi.ts                  — 数据持久化 API 客户端（CRUD）
+  server/
+    index.ts                    — Bun HTTP 数据服务 (:3001)
+    db.ts                       — SQLite Schema 与查询
+  scripts/
+    kill-port.ts                — 端口清理工具
+  utils/
+    fileUtils.ts                — 工具函数（base64 → File）
+    migrateData.ts              — 本地数据迁移（localStorage → SQLite）
+    presetStorage.ts            — 遗留预设存储（OPFS + localStorage）
+    workFilesystem.ts           — 遗留作品文件存储（OPFS）
   components/
-    DraftArea.tsx           — 生图草稿区
-    Gallery.tsx             — 风格探索 + 作品画廊
-    Lightbox.tsx            — 大图灯箱
-    ModelViewer.tsx         — Three.js 3D 模型查看器
-    PerlerColorPanel.tsx    — 拼豆颜色面板（色板 + 统计表）
-    PerlerExportModal.tsx   — 拼豆导出选项对话框
-    PerlerHero.tsx          — 拼豆输入区（上传 / 参数设置）
-    PerlerModule.tsx        — 拼豆模块编排器
-    PerlerPreview.tsx       — 拼豆图纸预览画布（画笔 / 缩放 / 平移）
-    PresetEditor.tsx        — 风格编辑器
-    ProjectSidebar.tsx      — 项目侧边栏
-    PromptInput.tsx         — 提示词输入（支持类别隔离）
-    Select.tsx              — 自定义下拉菜单
-    ThreeDHero.tsx          — 3D 生成输入区
-    ThreeDJobArea.tsx       — 3D 任务状态展示（多卡片）
-    ThreeDModule.tsx        — 3D 模块编排器
-    Toast.tsx               — 通知提示
-    WorkPicker.tsx          — 作品选取器（拼豆 / 3D 参考图）
-  data/
-    colorSystemMapping.json — 拼豆色号映射（292 种颜色 × 5 个品牌）
-    presets.ts              — 默认风格定义
+    image/                      ← 图像生成模块
+      ImageModule.tsx/css       — 模块编排器
+      useImageGeneration.ts     — 图片生成 Hook
+      presets.ts                — 默认风格定义
+      DraftArea.tsx/css         — 生图草稿区
+      Gallery.tsx/css           — 风格探索 + 作品画廊
+      Lightbox.tsx/css          — 大图灯箱
+      PresetEditor.tsx/css      — 风格编辑器
+      index.ts
+    3d/                         ← 3D 模型生成模块
+      ThreeDModule.tsx/css      — 模块编排器
+      use3DGeneration.ts        — 3D 生成 Hook
+      ThreeDHero.tsx/css        — 3D 生成输入区
+      ThreeDJobArea.tsx/css     — 3D 任务状态展示
+      ModelViewer.tsx           — Three.js 3D 模型查看器
+      index.ts
+    perler/                     ← 拼豆图纸模块
+      PerlerModule.tsx/css      — 模块编排器
+      usePerlerPattern.ts       — 拼豆图案状态管理 Hook
+      PerlerHero.tsx/css        — 拼豆输入区
+      PerlerPreview.tsx/css     — 拼豆图纸预览画布
+      PerlerColorPanel.tsx/css  — 颜色面板（色板 + 统计表）
+      PerlerExportModal.tsx/css — 导出选项对话框
+      colorSystem.ts            — 色号系统工具
+      editing.ts                — 像素编辑算法
+      pixelation.ts             — 像素化算法（Oklab 色彩空间）
+      download.ts               — PNG / CSV 导出
+      colorSystemMapping.json   — 292 种颜色 × 5 品牌映射
+      index.ts
+    shared/                     ← 共享 UI 组件
+      PromptInput.tsx/css       — 提示词输入
+      ProjectSidebar.tsx/css    — 项目侧边栏
+      Select.tsx/css            — 自定义下拉菜单
+      Toast.tsx/css             — 通知提示
+      WorkPicker.tsx/css        — 作品选取器
+      index.ts
   hooks/
-    useImageGeneration.ts   — 图片生成 Hook
-    use3DGeneration.ts      — 3D 生成 Hook（并发生成 / 乐观更新 / 刷新恢复）
-    usePerlerPattern.ts     — 拼豆图案状态管理 Hook
-    useTheme.ts             — 主题切换 Hook
-    useToast.ts             — 通知 Hook
-  lib/
-    api.ts                  — AI 图像 & 3D API 客户端
-    dataApi.ts              — 数据持久化 API 客户端
-    migrateData.ts          — 本地数据迁移
-    utils.ts                — 工具函数
-    perler/
-      colorSystem.ts        — 色号系统工具（查找 / 转换）
-      download.ts           — PNG / CSV 导出
-      editing.ts            — 像素编辑（画笔 / 橡皮擦 / 填充 / 替换）
-      pixelation.ts         — 像素化算法（Oklab 色彩空间）
+    useTheme.ts                 — 主题切换 Hook
+    useToast.ts                 — 通知 Hook
   types/
-    index.ts                — 类型定义
-  three-loaders.d.ts        — Three.js 加载器类型声明
-  App.tsx                   — 主应用
-  App.css                   — 样式
-  main.tsx                  — 入口
+    index.ts                    — 类型定义
+  assets/
+    hero.png, 3d.png, anime.png, cyberpunk.png, robot.png
+  three-loaders.d.ts            — Three.js 加载器类型声明
+docs/                           — 后端 API 参考文档
+  Convert.md, OpenAICompat.md, Query.md, Submit.md
+openapi.yaml                    — API Schema 定义
 ```

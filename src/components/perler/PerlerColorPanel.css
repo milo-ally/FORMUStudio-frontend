@@ -1,0 +1,175 @@
+/* ── Color Section ── */
+
+.perler-color-section {
+  margin-top: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.perler-color-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.perler-section-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.perler-color-total {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.perler-color-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Swatch strip */
+.perler-swatch-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 14px 24px;
+}
+
+.perler-swatch-chip {
+  width: 44px;
+  height: 44px;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, border-color 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.perler-swatch-chip:hover {
+  transform: scale(1.2);
+  z-index: 2;
+}
+
+.perler-swatch-chip.sel {
+  border-color: #3b82f6;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.perler-swatch-chip.hl {
+  border-color: #f59e0b;
+}
+
+.perler-swatch-chip.eraser {
+  background: repeating-linear-gradient(45deg, #eee, #eee 3px, #ddd 3px, #ddd 6px);
+  color: #999;
+  border: 2px solid var(--glass-border);
+}
+
+[data-theme="dark"] .perler-swatch-chip.eraser {
+  background: repeating-linear-gradient(45deg, #333, #333 3px, #444 4px, #444 7px);
+}
+
+.perler-swatch-chip-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.perler-swatch-chip-count {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Stats table */
+.perler-stats-wrap {
+  border-top: 1px solid var(--glass-border);
+}
+
+.perler-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.perler-stats-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-hover);
+  padding: 9px 20px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.perler-stats-table td {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.perler-stats-table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+
+.perler-row-hl td {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.perler-stat-dot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--glass-border);
+  vertical-align: middle;
+}
+
+.perler-stat-mono {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 12px;
+}
+
+.perler-stats-expand {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.perler-stats-expand:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}

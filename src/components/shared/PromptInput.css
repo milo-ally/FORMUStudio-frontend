@@ -1,0 +1,413 @@
+/* ========== Prompt Input ========== */
+.prompt-input-wrapper {
+  width: 100%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 14px 14px 14px 24px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+  box-shadow: var(--glass-shadow);
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+
+.prompt-input-wrapper:focus-within {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-focus);
+  transform: translateY(-1px);
+}
+
+.prompt-textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 15px;
+  line-height: 1.6;
+  font-family: inherit;
+  color: var(--text);
+  background: transparent;
+  padding: 0;
+  min-height: 52px;
+}
+
+.prompt-textarea::placeholder {
+  color: var(--placeholder);
+}
+
+.prompt-submit-btn {
+  height: 44px;
+  min-width: 88px;
+  padding: 0 24px;
+  border-radius: 22px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.prompt-submit-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+.prompt-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.prompt-submit-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.generating-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.prompt-cancel-btn {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.prompt-cancel-btn:hover {
+  border-color: var(--error);
+  color: var(--error);
+  background: var(--error-bg);
+}
+
+.spinner-triple {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+}
+
+.spinner-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulseDot 1.2s ease-in-out infinite;
+}
+
+.spinner-dot:nth-child(2) { animation-delay: 0.2s; }
+.spinner-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulseDot {
+  0%, 60%, 100% { opacity: 0.25; transform: scale(0.7); }
+  30% { opacity: 1; transform: scale(1); }
+}
+
+/* ========== Prompt Suggestions ========== */
+.prompt-input-wrapper {
+  position: relative;
+}
+
+.prompt-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 20px;
+  right: 20px;
+  z-index: 50;
+  background: var(--glass-bg);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  animation: dropdownIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.prompt-suggestion-item {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.prompt-suggestion-item:hover,
+.prompt-suggestion-item.active {
+  background: var(--bg-hover);
+}
+
+.prompt-suggestion-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.prompt-suggestion-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.prompt-suggestions-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 0 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--glass-border);
+  margin-top: 4px;
+}
+
+.prompt-suggestions-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ========== Prompt Card (wrapper) ========== */
+.prompt-card {
+  width: 100%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
+  overflow: visible;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  position: relative;
+  z-index: 10;
+}
+
+.prompt-card:focus-within {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-focus);
+}
+
+.prompt-card .prompt-input-wrapper {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.prompt-card .prompt-input-wrapper:focus-within {
+  box-shadow: none;
+  transform: none;
+}
+
+/* ========== Inline Prompt Settings ========== */
+.prompt-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px 16px;
+  flex-wrap: wrap;
+}
+
+.ps-item {
+  flex-shrink: 0;
+}
+
+.ps-select.custom-select .custom-select-trigger {
+  height: 32px;
+  padding: 0 32px 0 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  box-shadow: none;
+  font-weight: 500;
+  background: var(--bg-card);
+}
+
+.ps-select.custom-select .custom-select-dropdown {
+  left: auto;
+  right: 0;
+  min-width: 160px;
+}
+
+.ps-ratio-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.ps-ratio-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-glass);
+}
+
+.ps-upload-btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.ps-upload-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.ps-upload-btn.has-files {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-glass);
+}
+
+.ps-file-hidden {
+  display: none;
+}
+
+/* ========== Reference previews in prompt ========== */
+.prompt-ref-previews {
+  display: flex;
+  gap: 10px;
+  padding: 0 20px 16px;
+  flex-wrap: wrap;
+}
+
+.prompt-ref-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.prompt-ref-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.prompt-ref-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.prompt-ref-remove:hover {
+  background: rgba(0, 0, 0, 0.75);
+  transform: scale(1.1);
+}
+
+/* Toggle group (inline) */
+.prompt-settings .toggle-group {
+  height: 32px;
+}
+
+.prompt-settings .toggle-group::before {
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
+  border-radius: 7px;
+}
+
+.prompt-settings .toggle-btn {
+  height: 26px;
+  font-size: 12px;
+  padding: 0 12px;
+  border-radius: 8px;
+}
+

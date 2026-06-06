@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "bun run --watch server/index.ts",
-    "dev:all": "bun run scripts/kill-port.ts 3001; bun run dev:server & vite & wait",
+    "dev:server": "bun run --watch src/server/index.ts",
+    "dev:all": "bun run src/scripts/kill-port.ts 3001; bun run dev:server & vite & wait",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
