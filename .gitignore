@@ -6,7 +6,7 @@ dist/
 dist-ssr/
 
 # Data (SQLite database)
-data/
+/data/
 
 # Claude Code
 .claude/
