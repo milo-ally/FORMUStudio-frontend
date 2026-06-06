@@ -1,3 +1,5 @@
+import type { PerlerPatternMeta, MappedPixel, PixelationMode, ColorSystem } from "../types";
+
 const DATA_URL = "http://localhost:3001/api/data";
 
 interface ApiProject {
@@ -148,4 +150,45 @@ export async function saveSetting(key: string, value: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ value }),
   });
+}
+
+// ── Perler Patterns ──
+
+export interface PerlerPatternSaveData {
+  id?: string;
+  project_id: string;
+  name?: string;
+  image_base64?: string;
+  grid_data: MappedPixel[][];
+  grid_n: number;
+  grid_m: number;
+  pixelation_mode: PixelationMode;
+  color_system: ColorSystem;
+  bead_count: number;
+  color_counts: Record<string, { count: number; color: string }>;
+}
+
+export async function fetchPerlerPatterns(projectId: string): Promise<PerlerPatternMeta[]> {
+  const res = await fetch(`${DATA_URL}/perler-patterns?project_id=${encodeURIComponent(projectId)}`);
+  if (!res.ok) throw new Error(`Failed to fetch perler patterns: ${res.status}`);
+  return res.json();
+}
+
+export async function savePerlerPattern(pattern: PerlerPatternSaveData): Promise<{ ok: boolean; id: string }> {
+  const isNew = !pattern.id;
+  const url = isNew
+    ? `${DATA_URL}/perler-patterns`
+    : `${DATA_URL}/perler-patterns/${encodeURIComponent(pattern.id!)}`;
+  const res = await fetch(url, {
+    method: isNew ? "POST" : "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(pattern),
+  });
+  if (!res.ok) throw new Error(`Failed to save perler pattern: ${res.status}`);
+  return res.json();
+}
+
+export async function removePerlerPattern(id: string): Promise<void> {
+  const res = await fetch(`${DATA_URL}/perler-patterns/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to delete perler pattern: ${res.status}`);
 }

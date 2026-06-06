@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type {
   MappedPixel,
   PaletteColor,
   PixelationMode,
   ColorSystem,
   PerlerExportOptions,
+  PerlerPatternMeta,
 } from "../types";
 import { hexToRgb, calculatePixelGrid } from "../lib/perler/pixelation";
 import { getMardToHexMapping, convertPaletteToColorSystem } from "../lib/perler/colorSystem";
@@ -42,6 +43,18 @@ export interface UsePerlerPatternReturn {
   hasPattern: boolean;
   exportPattern: (options: PerlerExportOptions) => void;
   endStroke: () => void;
+  loadPattern: (pattern: PerlerPatternMeta) => void;
+  isLoadingPattern: React.RefObject<boolean>;
+  getPatternSaveData: () => {
+    image_base64: string;
+    grid_data: MappedPixel[][];
+    grid_n: number;
+    grid_m: number;
+    pixelation_mode: PixelationMode;
+    color_system: ColorSystem;
+    bead_count: number;
+    color_counts: Record<string, { count: number; color: string }>;
+  } | null;
 }
 
 function loadImageData(src: string): Promise<ImageData> {
@@ -73,20 +86,53 @@ function buildPalette(): PaletteColor[] {
 
 const fullPalette = buildPalette();
 
-export function usePerlerPattern(): UsePerlerPatternReturn {
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [gridN, setGridNState] = useState(50);
-  const [gridM, setGridMState] = useState(50);
-  const [pixelationMode, setPixelationMode] = useState<PixelationMode>("dominant");
-  const [colorSystem, setColorSystem] = useState<ColorSystem>("MARD");
+const PERLER_STATE_KEY = "perler_draft_state";
 
-  const [mappedPixelData, setMappedPixelData] = useState<MappedPixel[][] | null>(null);
-  const [gridDimensions, setGridDimensions] = useState<{ N: number; M: number } | null>(null);
-  const [colorCounts, setColorCounts] = useState<Record<string, { count: number; color: string }> | null>(null);
-  const [totalBeadCount, setTotalBeadCount] = useState(0);
+interface PersistedPerlerState {
+  imageSrc: string | null;
+  gridN: number;
+  gridM: number;
+  pixelationMode: PixelationMode;
+  colorSystem: ColorSystem;
+  mappedPixelData: MappedPixel[][] | null;
+  gridDimensions: { N: number; M: number } | null;
+  colorCounts: Record<string, { count: number; color: string }> | null;
+  totalBeadCount: number;
+}
+
+function loadPersistedState(): PersistedPerlerState | null {
+  try {
+    const raw = localStorage.getItem(PERLER_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed as PersistedPerlerState;
+  } catch {}
+  return null;
+}
+
+function savePersistedState(state: PersistedPerlerState) {
+  try {
+    localStorage.setItem(PERLER_STATE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+export function usePerlerPattern(): UsePerlerPatternReturn {
+  const persisted = useRef(loadPersistedState()).current;
+
+  const [imageSrc, setImageSrc] = useState<string | null>(persisted?.imageSrc ?? null);
+  const [gridN, setGridNState] = useState(persisted?.gridN ?? 50);
+  const [gridM, setGridMState] = useState(persisted?.gridM ?? 50);
+  const [pixelationMode, setPixelationMode] = useState<PixelationMode>(persisted?.pixelationMode ?? "dominant");
+  const [colorSystem, setColorSystem] = useState<ColorSystem>(persisted?.colorSystem ?? "MARD");
+
+  const [mappedPixelData, setMappedPixelData] = useState<MappedPixel[][] | null>(persisted?.mappedPixelData ?? null);
+  const [gridDimensions, setGridDimensions] = useState<{ N: number; M: number } | null>(persisted?.gridDimensions ?? null);
+  const [colorCounts, setColorCounts] = useState<Record<string, { count: number; color: string }> | null>(persisted?.colorCounts ?? null);
+  const [totalBeadCount, setTotalBeadCount] = useState(persisted?.totalBeadCount ?? 0);
 
   const historyRef = useRef<EditSnapshot[]>([]);
   const isStrokingRef = useRef(false);
+  const loadingPatternRef = useRef(persisted && persisted.mappedPixelData ? true : false);
   const canUndo = historyRef.current.length > 0;
 
   // Refs for snapshot to avoid stale closure issues
@@ -259,6 +305,62 @@ export function usePerlerPattern(): UsePerlerPatternReturn {
     [colorSystem, gridDimensions],
   );
 
+  const loadPattern = useCallback((pattern: PerlerPatternMeta) => {
+    loadingPatternRef.current = true;
+    setImageSrc(`data:image/png;base64,${pattern.image_base64}`);
+    setGridNState(pattern.grid_n);
+    setGridMState(pattern.grid_m);
+    setPixelationMode(pattern.pixelation_mode);
+    setColorSystem(pattern.color_system);
+    setMappedPixelData(pattern.grid_data);
+    setGridDimensions({ N: pattern.grid_n, M: pattern.grid_m });
+    setColorCounts(pattern.color_counts);
+    setTotalBeadCount(pattern.bead_count);
+    historyRef.current = [];
+  }, []);
+
+  const getPatternSaveData = useCallback(() => {
+    const data = dataRef.current;
+    const counts = countsRef.current;
+    const dims = gridDimensions;
+    if (!data || !counts || !dims) return null;
+    const imageSrcVal = imageSrc;
+    const b64 = imageSrcVal ? imageSrcVal.replace(/^data:image\/\w+;base64,/, "") : "";
+    return {
+      image_base64: b64,
+      grid_data: data,
+      grid_n: dims.N,
+      grid_m: dims.M,
+      pixelation_mode: pixelationMode,
+      color_system: colorSystem,
+      bead_count: totalRef.current,
+      color_counts: counts,
+    };
+  }, [pixelationMode, colorSystem, imageSrc, gridDimensions]);
+
+  // Debounced auto-save current pattern to localStorage so work survives refresh
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const state: PersistedPerlerState = {
+        imageSrc,
+        gridN,
+        gridM,
+        pixelationMode,
+        colorSystem,
+        mappedPixelData,
+        gridDimensions,
+        colorCounts,
+        totalBeadCount,
+      };
+      savePersistedState(state);
+    }, 400);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [imageSrc, gridN, gridM, pixelationMode, colorSystem, mappedPixelData, gridDimensions, colorCounts, totalBeadCount]);
+
   return {
     imageSrc,
     setImage,
@@ -284,5 +386,8 @@ export function usePerlerPattern(): UsePerlerPatternReturn {
     hasPattern: mappedPixelData !== null,
     exportPattern,
     endStroke,
+    loadPattern,
+    isLoadingPattern: loadingPatternRef,
+    getPatternSaveData,
   };
 }

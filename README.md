@@ -99,6 +99,10 @@ VITE_AUTH_KEY=dummy
 | `POST` | `/api/data/prompt-history` | 记录提示词 | 193 |
 | `GET` | `/api/data/settings/{key}` | 读取设置 | 202 |
 | `PUT` | `/api/data/settings/{key}` | 写入设置 | 207 |
+| `GET` | `/api/data/perler-patterns?project_id=` | 按项目列出拼豆图纸 | 222 |
+| `POST` | `/api/data/perler-patterns` | 保存新拼豆图纸 | 236 |
+| `PUT` | `/api/data/perler-patterns/{id}` | 更新拼豆图纸 | 257 |
+| `DELETE` | `/api/data/perler-patterns/{id}` | 删除拼豆图纸 | 274 |
 
 提示词历史按 `category` 区分：图像生成使用 `image`，3D 生成使用 `3d`，互不干扰。
 
@@ -120,6 +124,17 @@ VITE_AUTH_KEY=dummy
 - 多格式文件下载与格式转换
 - 并发生成多个任务
 
+### 拼豆图纸
+- 上传图片 / 从已有作品选取 → 生成拼豆图纸
+- 5 种色号系统（MARD / COCO / 漫漫 / 盼盼 / 咪小窝），292 种珠子颜色
+- 两种像素化模式：卡通模式（主色） / 真实模式（平均色）
+- 画笔绘制 / 橡皮擦 / 油漆桶 / 颜色替换
+- 拖拽连续绘制 + 笔划撤销（Ctrl+Z）
+- 无限缩放 + 平移预览
+- 导出高清 PNG 图纸（含网格线 / 坐标轴 / 色号标注）
+- 导出颜色统计 CSV
+- 图纸保存到服务端（刷新 / 清除缓存不丢失）
+
 ### 通用
 - 项目管理系统（创建 / 重命名 / 删除，内容按项目隔离）
 - 风格探索（默认 4 种 + 无限自定义，可编辑封面图和提示词）
@@ -140,6 +155,11 @@ src/
     Gallery.tsx             — 风格探索 + 作品画廊
     Lightbox.tsx            — 大图灯箱
     ModelViewer.tsx         — Three.js 3D 模型查看器
+    PerlerColorPanel.tsx    — 拼豆颜色面板（色板 + 统计表）
+    PerlerExportModal.tsx   — 拼豆导出选项对话框
+    PerlerHero.tsx          — 拼豆输入区（上传 / 参数设置）
+    PerlerModule.tsx        — 拼豆模块编排器
+    PerlerPreview.tsx       — 拼豆图纸预览画布（画笔 / 缩放 / 平移）
     PresetEditor.tsx        — 风格编辑器
     ProjectSidebar.tsx      — 项目侧边栏
     PromptInput.tsx         — 提示词输入（支持类别隔离）
@@ -148,18 +168,26 @@ src/
     ThreeDJobArea.tsx       — 3D 任务状态展示（多卡片）
     ThreeDModule.tsx        — 3D 模块编排器
     Toast.tsx               — 通知提示
-    WorkPicker.tsx          — 作品选取器（图生3D 参考图）
+    WorkPicker.tsx          — 作品选取器（拼豆 / 3D 参考图）
   data/
+    colorSystemMapping.json — 拼豆色号映射（292 种颜色 × 5 个品牌）
     presets.ts              — 默认风格定义
   hooks/
     useImageGeneration.ts   — 图片生成 Hook
     use3DGeneration.ts      — 3D 生成 Hook（并发生成 / 乐观更新 / 刷新恢复）
+    usePerlerPattern.ts     — 拼豆图案状态管理 Hook
     useTheme.ts             — 主题切换 Hook
     useToast.ts             — 通知 Hook
   lib/
     api.ts                  — AI 图像 & 3D API 客户端
     dataApi.ts              — 数据持久化 API 客户端
+    migrateData.ts          — 本地数据迁移
     utils.ts                — 工具函数
+    perler/
+      colorSystem.ts        — 色号系统工具（查找 / 转换）
+      download.ts           — PNG / CSV 导出
+      editing.ts            — 像素编辑（画笔 / 橡皮擦 / 填充 / 替换）
+      pixelation.ts         — 像素化算法（Oklab 色彩空间）
   types/
     index.ts                — 类型定义
   three-loaders.d.ts        — Three.js 加载器类型声明

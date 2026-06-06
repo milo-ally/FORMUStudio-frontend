@@ -3635,6 +3635,75 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
 }
 
+/* ── Saved Patterns ── */
+
+.perler-saved-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+}
+
+.perler-saved-label {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  white-space: nowrap;
+}
+
+.perler-saved-chip {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-page, #f9fafb);
+}
+
+.perler-saved-chip-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary, #1f2937);
+  transition: background 0.15s;
+}
+
+.perler-saved-chip-btn:hover {
+  background: var(--accent-light, #eff6ff);
+}
+
+.perler-saved-chip-dims {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.perler-saved-chip-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-tertiary, #9ca3af);
+  border-left: 1px solid var(--border-color, #e5e7eb);
+  transition: background 0.15s, color 0.15s;
+}
+
+.perler-saved-chip-del:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .perler-source-row {
@@ -3653,5 +3722,10 @@ body {
   .perler-swatch-chip {
     width: 38px;
     height: 38px;
+  }
+
+  .perler-saved-row {
+    gap: 6px;
+    padding: 8px 12px;
   }
 }

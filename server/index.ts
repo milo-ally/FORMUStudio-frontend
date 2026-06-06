@@ -2,6 +2,7 @@ import {
   type ProjectRow,
   type WorkRow,
   type PresetRow,
+  type PerlerPatternRow,
   listProjects,
   insertProject,
   deleteProject,
@@ -16,6 +17,11 @@ import {
   upsertPrompt,
   getSetting,
   setSetting,
+  listPerlerPatterns,
+  insertPerlerPattern,
+  updatePerlerPattern,
+  deletePerlerPattern,
+  getPerlerPattern,
 } from "./db";
 
 const PORT = 3001;
@@ -208,6 +214,78 @@ const server = Bun.serve({
         const key = parseId(url, 3);
         const body = await readBody(req);
         setSetting(key, (body.value as string) || "");
+        return cors(json({ ok: true }));
+      }
+
+      // ── Perler Patterns ──
+      if (path === "/api/data/perler-patterns" && method === "GET") {
+        const projectId = url.searchParams.get("project_id") || "";
+        const rows = listPerlerPatterns(projectId);
+        const patterns = rows.map((r) => ({
+          id: r.id,
+          project_id: r.project_id,
+          name: r.name,
+          image_base64: r.image_base64 || "",
+          grid_data: JSON.parse(r.grid_json || "[]"),
+          grid_n: r.grid_n,
+          grid_m: r.grid_m,
+          pixelation_mode: r.pixelation_mode,
+          color_system: r.color_system,
+          bead_count: r.bead_count,
+          color_counts: JSON.parse(r.color_counts_json || "{}"),
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        }));
+        return cors(json(patterns));
+      }
+
+      if (path === "/api/data/perler-patterns" && method === "POST") {
+        const body = await readBody(req);
+        const now = Date.now();
+        const row: PerlerPatternRow = {
+          id: (body.id as string) || crypto.randomUUID(),
+          project_id: body.project_id as string,
+          name: (body.name as string) || "",
+          image_base64: (body.image_base64 as string) || "",
+          grid_json: JSON.stringify(body.grid_data || []),
+          grid_n: (body.grid_n as number) || 50,
+          grid_m: (body.grid_m as number) || 50,
+          pixelation_mode: (body.pixelation_mode as string) || "dominant",
+          color_system: (body.color_system as string) || "MARD",
+          bead_count: (body.bead_count as number) || 0,
+          color_counts_json: JSON.stringify(body.color_counts || {}),
+          created_at: now,
+          updated_at: now,
+        };
+        insertPerlerPattern(row);
+        return cors(json({ ok: true, id: row.id }));
+      }
+
+      if (path.startsWith("/api/data/perler-patterns/") && method === "PUT") {
+        const id = parseId(url, 3);
+        const existing = getPerlerPattern(id);
+        if (!existing) return cors(json({ error: "not found" }, 404));
+        const body = await readBody(req);
+        const row: PerlerPatternRow = {
+          ...existing,
+          name: (body.name as string) ?? existing.name,
+          image_base64: (body.image_base64 as string) ?? existing.image_base64,
+          grid_json: body.grid_data !== undefined ? JSON.stringify(body.grid_data) : existing.grid_json,
+          grid_n: (body.grid_n as number) ?? existing.grid_n,
+          grid_m: (body.grid_m as number) ?? existing.grid_m,
+          pixelation_mode: (body.pixelation_mode as string) ?? existing.pixelation_mode,
+          color_system: (body.color_system as string) ?? existing.color_system,
+          bead_count: (body.bead_count as number) ?? existing.bead_count,
+          color_counts_json: body.color_counts !== undefined ? JSON.stringify(body.color_counts) : existing.color_counts_json,
+          updated_at: Date.now(),
+        };
+        updatePerlerPattern(row);
+        return cors(json({ ok: true, id }));
+      }
+
+      if (path.startsWith("/api/data/perler-patterns/") && method === "DELETE") {
+        const id = parseId(url, 3);
+        deletePerlerPattern(id);
         return cors(json({ ok: true }));
       }
 

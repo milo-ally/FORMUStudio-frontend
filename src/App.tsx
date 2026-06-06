@@ -13,22 +13,29 @@ import { useTheme } from "./hooks/useTheme";
 import { useToast } from "./hooks/useToast";
 import { ThreeDModule } from "./components/ThreeDModule";
 import { PerlerModule } from "./components/PerlerModule";
+import type { PerlerSaveData } from "./components/PerlerModule";
 import { fetchModels } from "./lib/api";
 import { base64ToFile } from "./lib/utils";
-import { fetchProjects, saveProject, removeProject, fetchWorks, saveWork, removeWork, fetchPresets, savePreset, removePreset, fetchSetting, saveSetting } from "./lib/dataApi";
+import { fetchProjects, saveProject, removeProject, fetchWorks, saveWork, removeWork, fetchPresets, savePreset, removePreset, fetchSetting, saveSetting, fetchPerlerPatterns, savePerlerPattern, removePerlerPattern } from "./lib/dataApi";
 import { maybeMigrate } from "./lib/migrateData";
 import { RATIO_DIMENSIONS } from "./types";
 import { getDefaultPresets, resolvePresets, DEFAULT_IDS } from "./data/presets";
 import type { Preset } from "./data/presets";
-import type { ImageRatio, StoredImage, Project, WorkMeta, PresetOverride, CustomPresetMeta } from "./types";
+import type { ImageRatio, StoredImage, Project, WorkMeta, PresetOverride, CustomPresetMeta, PerlerPatternMeta } from "./types";
 import "./App.css";
 
 function App() {
   const { theme, toggle: toggleTheme } = useTheme();
   const toast = useToast();
 
-  // Tab
-  const [tab, setTab] = useState<"image" | "3d" | "perler">("image");
+  // Tab — restore from localStorage for instant recovery on refresh
+  const [tab, setTab] = useState<"image" | "3d" | "perler">(() => {
+    try {
+      const v = localStorage.getItem("active_tab");
+      if (v === "image" || v === "3d" || v === "perler") return v;
+    } catch {}
+    return "image";
+  });
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -55,6 +62,9 @@ function App() {
   // Works — metadata + b64_json from API
   const [works, setWorks] = useState<Record<string, WorkMeta[]>>({});
 
+  // Perler patterns — saved bead patterns
+  const [perlerPatterns, setPerlerPatterns] = useState<Record<string, PerlerPatternMeta[]>>({});
+
   // Presets
   const [presetOverrides, setPresetOverrides] = useState<Record<string, PresetOverride>>({});
   const [presetImages, setPresetImages] = useState<Record<string, string>>({}); // id -> data URL or base64
@@ -73,7 +83,13 @@ function App() {
         if (savedActive && !cancelled) setActiveProject(savedActive);
       } catch {}
       try {
-        const [serverProjects, serverWorks, serverPresets] = await Promise.all([
+        const savedTab = await fetchSetting("active_tab");
+        if (savedTab && !cancelled && (savedTab === "image" || savedTab === "3d" || savedTab === "perler")) {
+          setTab(savedTab);
+        }
+      } catch {}
+      try {
+        const [serverProjects, serverWorks, serverPatterns, serverPresets] = await Promise.all([
           fetchProjects(),
           (async () => {
             // Fetch works for all projects we know about
@@ -84,6 +100,18 @@ function App() {
               allWorks[p.id] = w;
             }
             return allWorks;
+          })(),
+          (async () => {
+            // Fetch perler patterns for all projects
+            const allPatterns: Record<string, PerlerPatternMeta[]> = {};
+            const projects = await fetchProjects();
+            for (const p of projects) {
+              try {
+                const patterns = await fetchPerlerPatterns(p.id);
+                allPatterns[p.id] = patterns;
+              } catch { /* ignore */ }
+            }
+            return allPatterns;
           })(),
           fetchPresets(),
         ]);
@@ -96,6 +124,10 @@ function App() {
 
         if (Object.keys(serverWorks).length > 0) {
           setWorks(serverWorks);
+        }
+
+        if (Object.keys(serverPatterns).length > 0) {
+          setPerlerPatterns(serverPatterns);
         }
 
         // Parse presets
@@ -157,6 +189,13 @@ function App() {
     if (!dataLoaded) return;
     saveSetting("active_project", activeProject).catch(() => {});
   }, [activeProject, dataLoaded]);
+
+  // Persist active tab to localStorage + server
+  useEffect(() => {
+    try { localStorage.setItem("active_tab", tab); } catch {}
+    if (!dataLoaded) return;
+    saveSetting("active_tab", tab).catch(() => {});
+  }, [tab, dataLoaded]);
 
   // Persist project list changes to API
   const prevProjectsRef = useRef(projects);
@@ -348,6 +387,62 @@ function App() {
       setWorks((prev) => ({
         ...prev,
         [activeProject]: (prev[activeProject] || []).filter((w) => w.id !== id),
+      }));
+    },
+    [activeProject],
+  );
+
+  const handleSavePerlerPattern = useCallback(
+    async (data: PerlerSaveData) => {
+      const id = crypto.randomUUID();
+      const now = Date.now();
+      const meta: PerlerPatternMeta = {
+        id,
+        project_id: activeProject,
+        name: data.name || "",
+        image_base64: data.image_base64,
+        grid_data: data.grid_data,
+        grid_n: data.grid_n,
+        grid_m: data.grid_m,
+        pixelation_mode: data.pixelation_mode,
+        color_system: data.color_system,
+        bead_count: data.bead_count,
+        color_counts: data.color_counts,
+        created_at: now,
+        updated_at: now,
+      };
+      try {
+        await savePerlerPattern({
+          id,
+          project_id: activeProject,
+          name: data.name,
+          image_base64: data.image_base64,
+          grid_data: data.grid_data,
+          grid_n: data.grid_n,
+          grid_m: data.grid_m,
+          pixelation_mode: data.pixelation_mode,
+          color_system: data.color_system,
+          bead_count: data.bead_count,
+          color_counts: data.color_counts,
+        });
+      } catch (err) {
+        console.error("Failed to save perler pattern:", err);
+        return;
+      }
+      setPerlerPatterns((prev) => ({
+        ...prev,
+        [activeProject]: [meta, ...(prev[activeProject] || [])],
+      }));
+    },
+    [activeProject],
+  );
+
+  const handleDeletePerlerPattern = useCallback(
+    async (id: string) => {
+      removePerlerPattern(id).catch(() => {});
+      setPerlerPatterns((prev) => ({
+        ...prev,
+        [activeProject]: (prev[activeProject] || []).filter((p) => p.id !== id),
       }));
     },
     [activeProject],
@@ -752,6 +847,9 @@ function App() {
               projects={projects}
               activeProject={activeProject}
               onSelectProject={handleSelectProject}
+              savedPatterns={perlerPatterns[activeProject] || []}
+              onSavePattern={handleSavePerlerPattern}
+              onDeletePattern={handleDeletePerlerPattern}
             />
         </div>
       </div>

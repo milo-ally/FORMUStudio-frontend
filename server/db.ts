@@ -54,6 +54,22 @@ function migrate(db: Database) {
       PRIMARY KEY (prompt, category)
     );
 
+    CREATE TABLE IF NOT EXISTS perler_patterns (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT '',
+      image_base64 TEXT DEFAULT '',
+      grid_json TEXT NOT NULL DEFAULT '[]',
+      grid_n INTEGER NOT NULL DEFAULT 50,
+      grid_m INTEGER NOT NULL DEFAULT 50,
+      pixelation_mode TEXT NOT NULL DEFAULT 'dominant',
+      color_system TEXT NOT NULL DEFAULT 'MARD',
+      bead_count INTEGER DEFAULT 0,
+      color_counts_json TEXT DEFAULT '{}',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -61,6 +77,7 @@ function migrate(db: Database) {
 
     CREATE INDEX IF NOT EXISTS idx_works_project ON works(project_id);
     CREATE INDEX IF NOT EXISTS idx_presets_custom ON presets(is_custom);
+    CREATE INDEX IF NOT EXISTS idx_perler_patterns_project ON perler_patterns(project_id);
   `);
 
   // Migrate old prompt_history table that lacks the category column
@@ -221,4 +238,64 @@ export function setSetting(key: string, value: string) {
     "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     [key, value],
   );
+}
+
+// ── Perler Patterns ──
+
+export interface PerlerPatternRow {
+  id: string;
+  project_id: string;
+  name: string;
+  image_base64: string;
+  grid_json: string;
+  grid_n: number;
+  grid_m: number;
+  pixelation_mode: string;
+  color_system: string;
+  bead_count: number;
+  color_counts_json: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export function listPerlerPatterns(projectId: string): PerlerPatternRow[] {
+  return getDb()
+    .query("SELECT * FROM perler_patterns WHERE project_id = ? ORDER BY updated_at DESC")
+    .all(projectId) as PerlerPatternRow[];
+}
+
+export function insertPerlerPattern(p: PerlerPatternRow) {
+  getDb().run(
+    `INSERT INTO perler_patterns
+     (id, project_id, name, image_base64, grid_json,
+      grid_n, grid_m, pixelation_mode, color_system, bead_count,
+      color_counts_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [p.id, p.project_id, p.name, p.image_base64,
+     p.grid_json, p.grid_n, p.grid_m, p.pixelation_mode, p.color_system,
+     p.bead_count, p.color_counts_json, p.created_at, p.updated_at],
+  );
+}
+
+export function updatePerlerPattern(p: PerlerPatternRow) {
+  getDb().run(
+    `UPDATE perler_patterns SET
+       name = ?, image_base64 = ?, grid_json = ?,
+       grid_n = ?, grid_m = ?, pixelation_mode = ?, color_system = ?,
+       bead_count = ?, color_counts_json = ?, updated_at = ?
+     WHERE id = ?`,
+    [p.name, p.image_base64, p.grid_json, p.grid_n, p.grid_m,
+     p.pixelation_mode, p.color_system, p.bead_count,
+     p.color_counts_json, p.updated_at, p.id],
+  );
+}
+
+export function deletePerlerPattern(id: string) {
+  getDb().run("DELETE FROM perler_patterns WHERE id = ?", [id]);
+}
+
+export function getPerlerPattern(id: string): PerlerPatternRow | null {
+  return getDb()
+    .query("SELECT * FROM perler_patterns WHERE id = ?")
+    .get(id) as PerlerPatternRow | null;
 }

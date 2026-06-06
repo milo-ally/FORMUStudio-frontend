@@ -141,3 +141,19 @@ export interface PerlerExportOptions {
   includeStats: boolean;
   exportCsv: boolean;
 }
+
+export interface PerlerPatternMeta {
+  id: string;
+  project_id: string;
+  name: string;
+  image_base64: string;
+  grid_data: MappedPixel[][];
+  grid_n: number;
+  grid_m: number;
+  pixelation_mode: PixelationMode;
+  color_system: ColorSystem;
+  bead_count: number;
+  color_counts: Record<string, { count: number; color: string }>;
+  created_at: number;
+  updated_at: number;
+}
