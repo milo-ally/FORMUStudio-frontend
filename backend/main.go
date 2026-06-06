@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,15 +11,40 @@ import (
 	"github.com/formu/studio/handlers"
 	"github.com/formu/studio/middleware"
 	"github.com/formu/studio/services"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
 func main() {
-	database, err := sql.Open("sqlite3", "./formu.db")
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "5432")
+	dbUser := getEnv("DB_USER", "postgres")
+	dbPassword := getEnv("DB_PASSWORD", "postgres")
+	dbName := getEnv("DB_NAME", "formu_studio")
+	dbSSLMode := getEnv("DB_SSLMODE", "disable")
+
+	connStr := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		dbHost, dbPort, dbUser, dbPassword, dbName, dbSSLMode,
+	)
+
+	database, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer database.Close()
+
+	if err := database.Ping(); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	log.Println("Connected to PostgreSQL database")
 
 	if err := db.Migrate(database); err != nil {
 		log.Fatal(err)

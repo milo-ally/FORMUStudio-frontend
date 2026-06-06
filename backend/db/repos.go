@@ -20,7 +20,7 @@ func (r *UserRepo) Create(email, passwordHash, name string) (*User, error) {
 	now := time.Now()
 	_, err := r.db.Exec(`
 		INSERT INTO users (id, email, password_hash, name, role, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'USER', 'ACTIVE', ?, ?)
+		VALUES ($1, $2, $3, $4, 'USER', 'ACTIVE', $5, $6)
 	`, id, email, passwordHash, name, now.Unix(), now.Unix())
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (r *UserRepo) GetByEmail(email string) (*User, error) {
 	var createdAt, updatedAt int64
 	err := r.db.QueryRow(`
 		SELECT id, email, password_hash, name, role, status, created_at, updated_at
-		FROM users WHERE email = ?
+		FROM users WHERE email = $1
 	`, email).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Status, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (r *UserRepo) GetByID(id string) (*User, error) {
 	var createdAt, updatedAt int64
 	err := r.db.QueryRow(`
 		SELECT id, email, password_hash, name, role, status, created_at, updated_at
-		FROM users WHERE id = ?
+		FROM users WHERE id = $1
 	`, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Status, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (r *UserRepo) GetByID(id string) (*User, error) {
 
 func (r *UserRepo) ExistsByEmail(email string) (bool, error) {
 	var count int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&count)
+	err := r.db.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", email).Scan(&count)
 	return count > 0, err
 }
 
@@ -75,7 +75,7 @@ func NewProjectRepo(db *sql.DB) *ProjectRepo {
 func (r *ProjectRepo) ListByUser(userID string) ([]*Project, error) {
 	rows, err := r.db.Query(`
 		SELECT id, user_id, name, thumbnail_base64, image_count, created_at
-		FROM projects WHERE user_id = ? ORDER BY created_at DESC
+		FROM projects WHERE user_id = $1 ORDER BY created_at DESC
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (r *ProjectRepo) GetByID(id, userID string) (*Project, error) {
 	var createdAt int64
 	err := r.db.QueryRow(`
 		SELECT id, user_id, name, thumbnail_base64, image_count, created_at
-		FROM projects WHERE id = ? AND user_id = ?
+		FROM projects WHERE id = $1 AND user_id = $2
 	`, id, userID).Scan(&p.ID, &p.UserID, &p.Name, &p.ThumbnailBase64, &p.ImageCount, &createdAt)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (r *ProjectRepo) Create(name, userID string) (*Project, error) {
 	now := time.Now()
 	_, err := r.db.Exec(`
 		INSERT INTO projects (id, user_id, name, thumbnail_base64, image_count, created_at)
-		VALUES (?, ?, ?, '', 0, ?)
+		VALUES ($1, $2, $3, '', 0, $4)
 	`, id, userID, name, now.Unix())
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (r *ProjectRepo) Create(name, userID string) (*Project, error) {
 
 func (r *ProjectRepo) Update(id, name, userID string) (*Project, error) {
 	_, err := r.db.Exec(`
-		UPDATE projects SET name = ? WHERE id = ? AND user_id = ?
+		UPDATE projects SET name = $1 WHERE id = $2 AND user_id = $3
 	`, name, id, userID)
 	if err != nil {
 		return nil, err
@@ -133,13 +133,13 @@ func (r *ProjectRepo) Update(id, name, userID string) (*Project, error) {
 }
 
 func (r *ProjectRepo) Delete(id, userID string) error {
-	_, err := r.db.Exec("DELETE FROM projects WHERE id = ? AND user_id = ?", id, userID)
+	_, err := r.db.Exec("DELETE FROM projects WHERE id = $1 AND user_id = $2", id, userID)
 	return err
 }
 
 func (r *ProjectRepo) UpdateImageCount(projectID string, delta int) error {
 	_, err := r.db.Exec(`
-		UPDATE projects SET image_count = MAX(0, image_count + ?) WHERE id = ?
+		UPDATE projects SET image_count = GREATEST(0, image_count + $1) WHERE id = $2
 	`, delta, projectID)
 	return err
 }
@@ -155,7 +155,7 @@ func NewWorkRepo(db *sql.DB) *WorkRepo {
 func (r *WorkRepo) ListByProject(projectID, userID string) ([]*Work, error) {
 	rows, err := r.db.Query(`
 		SELECT id, user_id, project_id, image_base64, revised_prompt, created_at
-		FROM works WHERE project_id = ? AND user_id = ? ORDER BY created_at DESC
+		FROM works WHERE project_id = $1 AND user_id = $2 ORDER BY created_at DESC
 	`, projectID, userID)
 	if err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ func (r *WorkRepo) Create(projectID, userID, imageBase64, revisedPrompt string) 
 	now := time.Now()
 	_, err := r.db.Exec(`
 		INSERT INTO works (id, user_id, project_id, image_base64, revised_prompt, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`, id, userID, projectID, imageBase64, revisedPrompt, now.Unix())
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (r *WorkRepo) GetByID(id, userID string) (*Work, error) {
 	var createdAt int64
 	err := r.db.QueryRow(`
 		SELECT id, user_id, project_id, image_base64, revised_prompt, created_at
-		FROM works WHERE id = ? AND user_id = ?
+		FROM works WHERE id = $1 AND user_id = $2
 	`, id, userID).Scan(&w.ID, &w.UserID, &w.ProjectID, &w.ImageBase64, &w.RevisedPrompt, &createdAt)
 	if err != nil {
 		return nil, err
@@ -204,16 +204,16 @@ func (r *WorkRepo) GetByID(id, userID string) (*Work, error) {
 
 func (r *WorkRepo) Delete(id, userID string) (string, error) {
 	var projectID string
-	err := r.db.QueryRow("SELECT project_id FROM works WHERE id = ? AND user_id = ?", id, userID).Scan(&projectID)
+	err := r.db.QueryRow("SELECT project_id FROM works WHERE id = $1 AND user_id = $2", id, userID).Scan(&projectID)
 	if err != nil {
 		return "", err
 	}
-	_, err = r.db.Exec("DELETE FROM works WHERE id = ? AND user_id = ?", id, userID)
+	_, err = r.db.Exec("DELETE FROM works WHERE id = $1 AND user_id = $2", id, userID)
 	return projectID, err
 }
 
 func (r *WorkRepo) DeleteByProject(projectID string) error {
-	_, err := r.db.Exec("DELETE FROM works WHERE project_id = ?", projectID)
+	_, err := r.db.Exec("DELETE FROM works WHERE project_id = $1", projectID)
 	return err
 }
 
@@ -229,7 +229,7 @@ func (r *PerlerPatternRepo) ListByProject(projectID, userID string) ([]*PerlerPa
 	rows, err := r.db.Query(`
 		SELECT id, user_id, project_id, name, image_base64, grid_json, grid_n, grid_m,
 		       pixelation_mode, color_system, bead_count, color_counts_json, created_at, updated_at
-		FROM perler_patterns WHERE project_id = ? AND user_id = ? ORDER BY updated_at DESC
+		FROM perler_patterns WHERE project_id = $1 AND user_id = $2 ORDER BY updated_at DESC
 	`, projectID, userID)
 	if err != nil {
 		return nil, err
@@ -258,7 +258,7 @@ func (r *PerlerPatternRepo) GetByID(id, userID string) (*PerlerPattern, error) {
 	err := r.db.QueryRow(`
 		SELECT id, user_id, project_id, name, image_base64, grid_json, grid_n, grid_m,
 		       pixelation_mode, color_system, bead_count, color_counts_json, created_at, updated_at
-		FROM perler_patterns WHERE id = ? AND user_id = ?
+		FROM perler_patterns WHERE id = $1 AND user_id = $2
 	`, id, userID).Scan(&p.ID, &p.UserID, &p.ProjectID, &p.Name, &p.ImageBase64, &p.GridJSON,
 		&p.GridN, &p.GridM, &p.PixelationMode, &p.ColorSystem, &p.BeadCount,
 		&p.ColorCountsJSON, &createdAt, &updatedAt)
@@ -276,7 +276,7 @@ func (r *PerlerPatternRepo) Create(p *PerlerPattern) (*PerlerPattern, error) {
 	_, err := r.db.Exec(`
 		INSERT INTO perler_patterns (id, user_id, project_id, name, image_base64, grid_json,
 			grid_n, grid_m, pixelation_mode, color_system, bead_count, color_counts_json, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`, id, p.UserID, p.ProjectID, p.Name, p.ImageBase64, p.GridJSON,
 		p.GridN, p.GridM, p.PixelationMode, p.ColorSystem, p.BeadCount, p.ColorCountsJSON, now.Unix(), now.Unix())
 	if err != nil {
@@ -288,9 +288,9 @@ func (r *PerlerPatternRepo) Create(p *PerlerPattern) (*PerlerPattern, error) {
 func (r *PerlerPatternRepo) Update(id, userID string, p *PerlerPattern) (*PerlerPattern, error) {
 	now := time.Now()
 	_, err := r.db.Exec(`
-		UPDATE perler_patterns SET name = ?, image_base64 = ?, grid_json = ?, grid_n = ?, grid_m = ?,
-			pixelation_mode = ?, color_system = ?, bead_count = ?, color_counts_json = ?, updated_at = ?
-		WHERE id = ? AND user_id = ?
+		UPDATE perler_patterns SET name = $1, image_base64 = $2, grid_json = $3, grid_n = $4, grid_m = $5,
+			pixelation_mode = $6, color_system = $7, bead_count = $8, color_counts_json = $9, updated_at = $10
+		WHERE id = $11 AND user_id = $12
 	`, p.Name, p.ImageBase64, p.GridJSON, p.GridN, p.GridM,
 		p.PixelationMode, p.ColorSystem, p.BeadCount, p.ColorCountsJSON, now.Unix(), id, userID)
 	if err != nil {
@@ -300,6 +300,6 @@ func (r *PerlerPatternRepo) Update(id, userID string, p *PerlerPattern) (*Perler
 }
 
 func (r *PerlerPatternRepo) Delete(id, userID string) error {
-	_, err := r.db.Exec("DELETE FROM perler_patterns WHERE id = ? AND user_id = ?", id, userID)
+	_, err := r.db.Exec("DELETE FROM perler_patterns WHERE id = $1 AND user_id = $2", id, userID)
 	return err
 }

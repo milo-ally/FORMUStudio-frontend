@@ -5,52 +5,52 @@ import "database/sql"
 func Migrate(db *sql.DB) error {
 	_, err := db.Exec(`
 	CREATE TABLE IF NOT EXISTS users (
-		id TEXT PRIMARY KEY,
-		email TEXT UNIQUE NOT NULL,
+		id VARCHAR(255) PRIMARY KEY,
+		email VARCHAR(255) UNIQUE NOT NULL,
 		password_hash TEXT NOT NULL,
-		name TEXT,
-		role TEXT DEFAULT 'USER',
-		status TEXT DEFAULT 'ACTIVE',
-		created_at INTEGER NOT NULL,
-		updated_at INTEGER NOT NULL
+		name VARCHAR(255),
+		role VARCHAR(50) DEFAULT 'USER',
+		status VARCHAR(50) DEFAULT 'ACTIVE',
+		created_at BIGINT NOT NULL,
+		updated_at BIGINT NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS projects (
-		id TEXT PRIMARY KEY,
-		user_id TEXT NOT NULL,
-		name TEXT NOT NULL,
+		id VARCHAR(255) PRIMARY KEY,
+		user_id VARCHAR(255) NOT NULL,
+		name VARCHAR(255) NOT NULL,
 		thumbnail_base64 TEXT DEFAULT '',
 		image_count INTEGER DEFAULT 0,
-		created_at INTEGER NOT NULL,
+		created_at BIGINT NOT NULL,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 	);
 
 	CREATE TABLE IF NOT EXISTS works (
-		id TEXT PRIMARY KEY,
-		user_id TEXT NOT NULL,
-		project_id TEXT NOT NULL,
+		id VARCHAR(255) PRIMARY KEY,
+		user_id VARCHAR(255) NOT NULL,
+		project_id VARCHAR(255) NOT NULL,
 		image_base64 TEXT DEFAULT '',
 		revised_prompt TEXT DEFAULT '',
-		created_at INTEGER NOT NULL,
+		created_at BIGINT NOT NULL,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 	);
 
 	CREATE TABLE IF NOT EXISTS perler_patterns (
-		id TEXT PRIMARY KEY,
-		user_id TEXT NOT NULL,
-		project_id TEXT NOT NULL,
-		name TEXT DEFAULT '',
+		id VARCHAR(255) PRIMARY KEY,
+		user_id VARCHAR(255) NOT NULL,
+		project_id VARCHAR(255) NOT NULL,
+		name VARCHAR(255) DEFAULT '',
 		image_base64 TEXT DEFAULT '',
 		grid_json TEXT NOT NULL DEFAULT '[]',
 		grid_n INTEGER NOT NULL DEFAULT 50,
 		grid_m INTEGER NOT NULL DEFAULT 50,
-		pixelation_mode TEXT NOT NULL DEFAULT 'dominant',
-		color_system TEXT NOT NULL DEFAULT 'MARD',
+		pixelation_mode VARCHAR(50) NOT NULL DEFAULT 'dominant',
+		color_system VARCHAR(50) NOT NULL DEFAULT 'MARD',
 		bead_count INTEGER DEFAULT 0,
 		color_counts_json TEXT DEFAULT '{}',
-		created_at INTEGER NOT NULL,
-		updated_at INTEGER NOT NULL,
+		created_at BIGINT NOT NULL,
+		updated_at BIGINT NOT NULL,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 	);

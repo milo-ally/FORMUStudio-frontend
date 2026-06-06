@@ -1,11 +1,11 @@
 # FORMU Studio - Go Backend
 
-基于 Go + SQLite 的企业级后端服务，支持用户认证、多租户数据隔离和事务操作。
+基于 Go + PostgreSQL 的企业级后端服务，支持用户认证、多租户数据隔离和事务操作。
 
 ## 技术栈
 
 - Go 1.21+
-- SQLite (生产环境可切换为 PostgreSQL)
+- PostgreSQL
 - JWT 认证
 - 标准库 net/http (无框架依赖)
 
@@ -36,14 +36,33 @@ backend/
 
 ## 快速开始
 
-### 安装依赖
+### 1. 准备 PostgreSQL 数据库
+
+创建数据库：
+```sql
+CREATE DATABASE formu_studio;
+```
+
+### 2. 配置环境变量
+
+创建 `.env` 文件或直接在环境中设置：
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASSWORD=your_password
+export DB_NAME=formu_studio
+export DB_SSLMODE=disable
+```
+
+### 3. 安装依赖
 
 ```bash
 cd backend
 go mod tidy
 ```
 
-### 运行服务
+### 4. 运行服务
 
 ```bash
 go run main.go
@@ -162,12 +181,17 @@ export async function fetchProjects(): Promise<ApiProject[]> {
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | PORT | 8080 | 服务端口 |
+| DB_HOST | localhost | 数据库主机 |
+| DB_PORT | 5432 | 数据库端口 |
+| DB_USER | postgres | 数据库用户 |
+| DB_PASSWORD | postgres | 数据库密码 |
+| DB_NAME | formu_studio | 数据库名称 |
+| DB_SSLMODE | disable | SSL 模式 |
 
 ## 生产部署建议
 
-1. 切换到 PostgreSQL 数据库
-2. 使用环境变量管理 JWT Secret
-3. 添加请求限流
-4. 添加日志和监控
-5. 使用 HTTPS
-6. 定期数据库备份
+1. 使用环境变量管理 JWT Secret
+2. 添加请求限流
+3. 添加日志和监控
+4. 使用 HTTPS
+5. 定期数据库备份
