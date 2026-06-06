@@ -3309,8 +3309,8 @@ body {
 }
 
 .perler-swatch-chip {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border: 2px solid transparent;
   border-radius: 5px;
   cursor: pointer;
@@ -3350,15 +3350,16 @@ body {
 }
 
 .perler-swatch-chip-label {
-  font-size: 8px;
+  font-size: 10px;
+  font-weight: 700;
   color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   line-height: 1;
   pointer-events: none;
 }
 
 .perler-swatch-chip-count {
-  font-size: 7px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.8);
   line-height: 1;
   pointer-events: none;
@@ -3650,7 +3651,7 @@ body {
   }
 
   .perler-swatch-chip {
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 38px;
   }
 }

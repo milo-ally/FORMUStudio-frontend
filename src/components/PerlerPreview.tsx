@@ -27,7 +27,7 @@ function contrastColor(hex: string): string {
   return luma > 0.5 ? "#000000" : "#FFFFFF";
 }
 
-const CELL_NUM_ZOOM_THRESHOLD = 2.5;
+const CELL_NUM_ZOOM_THRESHOLD = 1.5;
 
 export function PerlerPreview({
   mappedPixelData,
@@ -58,7 +58,7 @@ export function PerlerPreview({
     if (!canvas || !mappedPixelData || !gridDimensions) return;
 
     const { N, M } = gridDimensions;
-    const baseCellSize = Math.max(8, Math.floor(600 / Math.max(N, M)));
+    const baseCellSize = Math.max(12, Math.floor(1200 / Math.max(N, M)));
     const effectiveCellSize = baseCellSize * zoom;
     const w = N * baseCellSize;
     const h = M * baseCellSize;
@@ -107,8 +107,8 @@ export function PerlerPreview({
 
         // Bead ID labels — only when zoomed in enough
         if (showLabels && !cell.isExternal) {
-          const fontSize = Math.max(5, Math.floor(baseCellSize * 0.22));
-          ctx.font = `600 ${fontSize}px system-ui, -apple-system, sans-serif`;
+          const fontSize = Math.max(9, Math.floor(baseCellSize * 0.38));
+          ctx.font = `700 ${fontSize}px system-ui, -apple-system, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = contrastColor(cell.color);

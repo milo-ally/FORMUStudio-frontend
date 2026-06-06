@@ -149,8 +149,8 @@ export function downloadPerlerImage(
   }
 
   // Cells
-  const fontSize = Math.max(8, Math.floor(cellSize * 0.4));
-  ctx.font = `bold ${fontSize}px sans-serif`;
+  const fontSize = Math.max(10, Math.floor(cellSize * 0.55));
+  ctx.font = `700 ${fontSize}px system-ui, -apple-system, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
