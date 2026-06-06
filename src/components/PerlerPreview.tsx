@@ -29,6 +29,10 @@ function contrastColor(hex: string): string {
 
 const CELL_NUM_ZOOM_THRESHOLD = 1.5;
 
+function cellFontSize(baseCellSize: number): number {
+  return Math.max(6, Math.min(Math.floor(baseCellSize * 0.38), 14));
+}
+
 export function PerlerPreview({
   mappedPixelData,
   gridDimensions,
@@ -107,7 +111,7 @@ export function PerlerPreview({
 
         // Bead ID labels — only when zoomed in enough
         if (showLabels && !cell.isExternal) {
-          const fontSize = Math.max(9, Math.floor(baseCellSize * 0.38));
+          const fontSize = cellFontSize(baseCellSize);
           ctx.font = `700 ${fontSize}px system-ui, -apple-system, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";

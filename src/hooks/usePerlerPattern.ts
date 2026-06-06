@@ -134,8 +134,8 @@ export function usePerlerPattern(): UsePerlerPatternReturn {
     if (!imageSrc) return;
 
     // Validate and clamp grid dimensions
-    const N = Math.max(10, Math.min(300, gridN || 50));
-    const M = Math.max(10, Math.min(300, gridM || 50));
+    const N = Math.max(10, Math.min(100, gridN || 50));
+    const M = Math.max(10, Math.min(100, gridM || 50));
     if (N !== gridN) setGridNState(N);
     if (M !== gridM) setGridMState(M);
 

@@ -66,7 +66,7 @@ export function downloadPerlerImage(
 ): void {
   const { N, M } = dims;
   const maxDim = Math.max(N, M);
-  const cellSize = maxDim > 200 ? 16 : maxDim > 120 ? 22 : 30;
+  const cellSize = maxDim > 80 ? 22 : 30;
   const {
     showGrid,
     gridInterval,

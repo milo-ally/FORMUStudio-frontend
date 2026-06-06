@@ -99,9 +99,9 @@ export function PerlerHero({
     [onImageChange],
   );
 
-  const stepNUp = useCallback(() => onGridNChange(Math.min(300, gridN + 1)), [gridN, onGridNChange]);
+  const stepNUp = useCallback(() => onGridNChange(Math.min(100, gridN + 1)), [gridN, onGridNChange]);
   const stepNDown = useCallback(() => onGridNChange(Math.max(10, gridN - 1)), [gridN, onGridNChange]);
-  const stepMUp = useCallback(() => onGridMChange(Math.min(300, gridM + 1)), [gridM, onGridMChange]);
+  const stepMUp = useCallback(() => onGridMChange(Math.min(100, gridM + 1)), [gridM, onGridMChange]);
   const stepMDown = useCallback(() => onGridMChange(Math.max(10, gridM - 1)), [gridM, onGridMChange]);
 
   return (
@@ -181,7 +181,7 @@ export function PerlerHero({
                   className="perler-num-input"
                   type="number"
                   min={10}
-                  max={300}
+                  max={100}
                   value={gridN}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -190,7 +190,7 @@ export function PerlerHero({
                     if (!isNaN(n)) onGridNChange(n);
                   }}
                 />
-                <button className="perler-stepper-btn" onClick={stepNUp} disabled={gridN >= 300}>+</button>
+                <button className="perler-stepper-btn" onClick={stepNUp} disabled={gridN >= 100}>+</button>
               </div>
             </div>
 
@@ -202,7 +202,7 @@ export function PerlerHero({
                   className="perler-num-input"
                   type="number"
                   min={10}
-                  max={300}
+                  max={100}
                   value={gridM}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -211,7 +211,7 @@ export function PerlerHero({
                     if (!isNaN(m)) onGridMChange(m);
                   }}
                 />
-                <button className="perler-stepper-btn" onClick={stepMUp} disabled={gridM >= 300}>+</button>
+                <button className="perler-stepper-btn" onClick={stepMUp} disabled={gridM >= 100}>+</button>
               </div>
             </div>
 
