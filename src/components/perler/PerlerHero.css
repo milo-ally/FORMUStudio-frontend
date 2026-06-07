@@ -242,3 +242,27 @@
   border-radius: var(--radius-sm);
   pointer-events: none;
 }
+
+/* Generating spinner */
+.spinner-triple {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+}
+
+.spinner-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulseDot 1.2s ease-in-out infinite;
+}
+
+.spinner-dot:nth-child(2) { animation-delay: 0.2s; }
+.spinner-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulseDot {
+  0%, 60%, 100% { opacity: 0.25; transform: scale(0.7); }
+  30%           { opacity: 1;    transform: scale(1); }
+}
