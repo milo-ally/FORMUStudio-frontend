@@ -92,7 +92,11 @@ export function findClosestPaletteColor(
 // ── Core pixelation ──
 
 export const TRANSPARENT_KEY = "ERASE";
-const transparentPixel: MappedPixel = { key: TRANSPARENT_KEY, color: "#FFFFFF", isExternal: true };
+const transparentPixel: MappedPixel = { 
+  key: TRANSPARENT_KEY, 
+  color: "#FFFFFF", 
+  isExternal: true 
+};
 
 function cellRepresentativeColor(
   imageData: ImageData,

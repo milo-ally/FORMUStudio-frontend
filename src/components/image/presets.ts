@@ -38,7 +38,7 @@ const DEFAULTS: Preset[] = [
     image: cyberpunkImg,
     prompt:
       "赛博朋克城市夜景、霓虹灯在湿润街道上的反射、全息广告牌、雨天、电影级光影、银翼杀手美学、高细节、未来科技感",
-    ratio: "16:9",
+    ratio: "1:1",
   },
   {
     id: "robot",
