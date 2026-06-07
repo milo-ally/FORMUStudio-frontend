@@ -110,6 +110,7 @@ function buildPaletteLookup(palette: PaletteColor[]): PaletteLookup {
 /** Memoized target-RGB → closest palette entry. */
 const closestCache = new Map<number, PaletteColor>();
 
+// KNN (K=1) search in Oklab space for best palette match to a target RGB color.
 export function findClosestPaletteColor(
   targetRgb: RgbColor,
   palette: PaletteColor[],
