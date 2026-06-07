@@ -35,14 +35,19 @@ function rgbToOklab(rgb: RgbColor): OklabColor {
   };
 }
 
-const oklabCache = new Map<string, OklabColor>();
+/** Pack 8-bit RGB channels into a single 24-bit integer for fast Map keys. */
+function rgbKey(r: number, g: number, b: number): number {
+  return (r << 16) | (g << 8) | b;
+}
+
+const oklabCache = new Map<number, OklabColor>();
 
 function getOklabColor(rgb: RgbColor): OklabColor {
-  const cacheKey = `${rgb.r},${rgb.g},${rgb.b}`;
-  const cached = oklabCache.get(cacheKey);
+  const key = rgbKey(rgb.r, rgb.g, rgb.b);
+  const cached = oklabCache.get(key);
   if (cached) return cached;
   const oklab = rgbToOklab(rgb);
-  oklabCache.set(cacheKey, oklab);
+  oklabCache.set(key, oklab);
   return oklab;
 }
 
@@ -69,6 +74,42 @@ export function colorDistance(rgb1: RgbColor, rgb2: RgbColor): number {
   return Math.sqrt(dl * dl + da * da + db * db) * 100;
 }
 
+// ── Palette acceleration ──
+
+interface PaletteLookup {
+  entries: PaletteColor[];
+  l: Float64Array;
+  a: Float64Array;
+  b: Float64Array;
+}
+
+/** Precomputed Oklab coords for a palette, cached by array identity. */
+const paletteLookupCache = new WeakMap<PaletteColor[], PaletteLookup>();
+
+function buildPaletteLookup(palette: PaletteColor[]): PaletteLookup {
+  const cached = paletteLookupCache.get(palette);
+  if (cached) return cached;
+
+  const n = palette.length;
+  const l = new Float64Array(n);
+  const a = new Float64Array(n);
+  const b = new Float64Array(n);
+
+  for (let i = 0; i < n; i++) {
+    const ok = getOklabColor(palette[i].rgb);
+    l[i] = ok.l;
+    a[i] = ok.a;
+    b[i] = ok.b;
+  }
+
+  const lookup: PaletteLookup = { entries: palette, l, a, b };
+  paletteLookupCache.set(palette, lookup);
+  return lookup;
+}
+
+/** Memoized target-RGB → closest palette entry. */
+const closestCache = new Map<number, PaletteColor>();
+
 export function findClosestPaletteColor(
   targetRgb: RgbColor,
   palette: PaletteColor[],
@@ -76,26 +117,42 @@ export function findClosestPaletteColor(
   if (!palette || palette.length === 0) {
     return { key: "ERR", hex: "#000000", rgb: { r: 0, g: 0, b: 0 } };
   }
-  let minDistance = Infinity;
-  let closest = palette[0];
-  for (const c of palette) {
-    const d = colorDistance(targetRgb, c.rgb);
-    if (d < minDistance) {
-      minDistance = d;
-      closest = c;
+
+  const cacheKey = rgbKey(targetRgb.r, targetRgb.g, targetRgb.b);
+  const cached = closestCache.get(cacheKey);
+  if (cached) return cached;
+
+  const lookup = buildPaletteLookup(palette);
+  const t = getOklabColor(targetRgb);
+
+  let minDist = Infinity;
+  let bestIdx = 0;
+
+  for (let i = 0; i < lookup.entries.length; i++) {
+    const dl = t.l - lookup.l[i];
+    const da = t.a - lookup.a[i];
+    const db = t.b - lookup.b[i];
+    // Compare squared distances — sqrt is monotonic, skip it
+    const dist = dl * dl + da * da + db * db;
+    if (dist < minDist) {
+      minDist = dist;
+      bestIdx = i;
+      if (dist === 0) break;
     }
-    if (d === 0) break;
   }
-  return closest;
+
+  const best = lookup.entries[bestIdx];
+  closestCache.set(cacheKey, best);
+  return best;
 }
 
 // ── Core pixelation ──
 
 export const TRANSPARENT_KEY = "ERASE";
-const transparentPixel: MappedPixel = { 
-  key: TRANSPARENT_KEY, 
-  color: "#FFFFFF", 
-  isExternal: true 
+const transparentPixel: MappedPixel = {
+  key: TRANSPARENT_KEY,
+  color: "#FFFFFF",
+  isExternal: true,
 };
 
 function cellRepresentativeColor(
@@ -112,7 +169,7 @@ function cellRepresentativeColor(
     gSum = 0,
     bSum = 0;
   let pixelCount = 0;
-  const counts: Record<string, number> = {};
+  const counts: Record<number, number> = {};
   let dominantRgb: RgbColor | null = null;
   let maxCount = 0;
 
@@ -134,7 +191,7 @@ function cellRepresentativeColor(
         gSum += g;
         bSum += b;
       } else {
-        const k = `${r},${g},${b}`;
+        const k = rgbKey(r, g, b);
         counts[k] = (counts[k] || 0) + 1;
         if (counts[k] > maxCount) {
           maxCount = counts[k];
