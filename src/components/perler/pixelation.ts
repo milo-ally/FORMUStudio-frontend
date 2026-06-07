@@ -64,7 +64,6 @@ export function hexToRgb(hex: string): RgbColor | null {
     : null;
 }
 
-/** Oklab color distance scaled to 0-100 range for threshold compatibility. */
 export function colorDistance(rgb1: RgbColor, rgb2: RgbColor): number {
   const o1 = getOklabColor(rgb1);
   const o2 = getOklabColor(rgb2);
@@ -74,17 +73,72 @@ export function colorDistance(rgb1: RgbColor, rgb2: RgbColor): number {
   return Math.sqrt(dl * dl + da * da + db * db) * 100;
 }
 
-// ── Palette acceleration ──
+// ── Palette acceleration with KD-Tree ──
 
 interface PaletteLookup {
   entries: PaletteColor[];
   l: Float64Array;
   a: Float64Array;
   b: Float64Array;
+  kdTree: KdNode | null;
 }
 
-/** Precomputed Oklab coords for a palette, cached by array identity. */
 const paletteLookupCache = new WeakMap<PaletteColor[], PaletteLookup>();
+const closestCache = new Map<number, PaletteColor>();
+
+interface KdNode {
+  index: number;
+  left: KdNode | null;
+  right: KdNode | null;
+  axis: 0 | 1 | 2;
+}
+
+function buildKdTree(
+  l: Float64Array,
+  a: Float64Array,
+  b: Float64Array,
+  indices: number[],
+  depth = 0
+): KdNode | null {
+  if (indices.length === 0) return null;
+
+  const axis = (depth % 3) as 0 | 1 | 2;
+  indices.sort((i, j) =>
+    axis === 0 ? l[i] - l[j] : axis === 1 ? a[i] - a[j] : b[i] - b[j]
+  );
+
+  const mid = Math.floor(indices.length / 2);
+  const left = buildKdTree(l, a, b, indices.slice(0, mid), depth + 1);
+  const right = buildKdTree(l, a, b, indices.slice(mid + 1), depth + 1);
+
+  return { index: indices[mid], left, right, axis };
+}
+
+function nearestNeighborKd(
+  t: OklabColor,
+  lookup: PaletteLookup,
+  node: KdNode | null,
+  best: { dist: number; idx: number }
+): { dist: number; idx: number } {
+  if (!node) return best;
+
+  const dl = t.l - lookup.l[node.index];
+  const da = t.a - lookup.a[node.index];
+  const db = t.b - lookup.b[node.index];
+  const dist = dl * dl + da * da + db * db;
+
+  if (dist < best.dist) best = { dist, idx: node.index };
+
+  const axis = node.axis;
+  const diff = axis === 0 ? dl : axis === 1 ? da : db;
+
+  const [near, far] = diff < 0 ? [node.left, node.right] : [node.right, node.left];
+
+  best = nearestNeighborKd(t, lookup, near, best);
+  if (diff * diff < best.dist) best = nearestNeighborKd(t, lookup, far, best);
+
+  return best;
+}
 
 function buildPaletteLookup(palette: PaletteColor[]): PaletteLookup {
   const cached = paletteLookupCache.get(palette);
@@ -102,17 +156,21 @@ function buildPaletteLookup(palette: PaletteColor[]): PaletteLookup {
     b[i] = ok.b;
   }
 
-  const lookup: PaletteLookup = { entries: palette, l, a, b };
+  const lookup: PaletteLookup = {
+    entries: palette,
+    l,
+    a,
+    b,
+    kdTree: buildKdTree(l, a, b, Array.from({ length: n }, (_, i) => i)),
+  };
+
   paletteLookupCache.set(palette, lookup);
   return lookup;
 }
 
-/** Memoized target-RGB → closest palette entry. */
-const closestCache = new Map<number, PaletteColor>();
-
 export function findClosestPaletteColor(
   targetRgb: RgbColor,
-  palette: PaletteColor[],
+  palette: PaletteColor[]
 ): PaletteColor {
   if (!palette || palette.length === 0) {
     return { key: "ERR", hex: "#000000", rgb: { r: 0, g: 0, b: 0 } };
@@ -125,21 +183,7 @@ export function findClosestPaletteColor(
   const lookup = buildPaletteLookup(palette);
   const t = getOklabColor(targetRgb);
 
-  let minDist = Infinity;
-  let bestIdx = 0;
-
-  for (let i = 0; i < lookup.entries.length; i++) {
-    const dl = t.l - lookup.l[i];
-    const da = t.a - lookup.a[i];
-    const db = t.b - lookup.b[i];
-    // Compare squared distances — sqrt is monotonic, skip it
-    const dist = dl * dl + da * da + db * db;
-    if (dist < minDist) {
-      minDist = dist;
-      bestIdx = i;
-      if (dist === 0) break;
-    }
-  }
+  const bestIdx = nearestNeighborKd(t, lookup, lookup.kdTree, { dist: Infinity, idx: 0 }).idx;
 
   const best = lookup.entries[bestIdx];
   closestCache.set(cacheKey, best);
@@ -161,7 +205,7 @@ function cellRepresentativeColor(
   startY: number,
   width: number,
   height: number,
-  mode: PixelationMode,
+  mode: PixelationMode
 ): RgbColor | null {
   const data = imageData.data;
   const imgWidth = imageData.width;
@@ -170,7 +214,7 @@ function cellRepresentativeColor(
     bSum = 0;
   let pixelCount = 0;
   const counts: Record<number, number> = {};
-  let dominantRgb: RgbColor | null = null;
+  let dominantRb: RgbColor | null = null;
   let maxCount = 0;
 
   const endX = startX + width;
@@ -184,8 +228,8 @@ function cellRepresentativeColor(
       const r = data[idx];
       const g = data[idx + 1];
       const b = data[idx + 2];
-      pixelCount++;
 
+      pixelCount++;
       if (mode === "average") {
         rSum += r;
         gSum += g;
@@ -218,11 +262,11 @@ export function calculatePixelGrid(
   N: number,
   M: number,
   palette: PaletteColor[],
-  mode: PixelationMode,
+  mode: PixelationMode
 ): MappedPixel[][] {
   const fallback = palette[0] ?? { key: "T1", hex: "#FFFFFF", rgb: { r: 255, g: 255, b: 255 } };
   const grid: MappedPixel[][] = Array.from({ length: M }, () =>
-    Array.from({ length: N }, () => ({ key: fallback.key, color: fallback.hex })),
+    Array.from({ length: N }, () => ({ key: fallback.key, color: fallback.hex }))
   );
 
   const imgWidth = imageData.width;
